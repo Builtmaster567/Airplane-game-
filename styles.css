@@ -294,3 +294,122 @@ iframe {
 }
 
 body.focus-mode .desktop { filter: saturate(0.85) hue-rotate(-15deg); }
+
+.explorer-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0.8rem;
+}
+
+.explorer-layout aside,
+.explorer-layout main {
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.explorer-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.explorer-table td,
+.explorer-table th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+  padding: 0.4rem;
+}
+
+.docs-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.45rem;
+}
+
+.doc-title {
+  max-width: 420px;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  padding: 0.45rem;
+}
+
+.doc-stat {
+  font-size: 0.82rem;
+  color: #b7caef;
+}
+
+.docs-toolbar-wrap {
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 0.6rem;
+}
+
+#toolSearch {
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  padding: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.docs-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.tool-chip,
+.tab-btn {
+  border: 1px solid var(--line);
+  background: rgba(30, 84, 160, 0.35);
+  color: #e5efff;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+  margin-bottom: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn.active {
+  border-color: rgba(130, 189, 255, 0.9);
+  background: rgba(56, 117, 205, 0.55);
+}
+
+.advanced-calc .calc-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.calc-grid.five {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.calc-history {
+  margin-top: 0.6rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  padding: 0.45rem;
+  max-height: 110px;
+  overflow: auto;
+  font-size: 0.8rem;
+  color: #cfe3ff;
+}
