@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Dominion Tycoon: Workforce Command Edition</title>
+  <style>
+    :root {
+      --bg: #081225;
+      --panel: #122445;
+      --panel-soft: #162e58;
+      --text: #edf4ff;
+      --muted: #98b2dc;
+      --line: #2f5288;
+      --good: #34d399;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 10% 5%, rgba(37, 112, 173, 0.35), transparent 30%),
+        radial-gradient(circle at 90% 0%, rgba(48, 87, 179, 0.28), transparent 24%),
+        linear-gradient(180deg, #040a15, #091833 40%, #0c2143);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(8px);
+      background: rgba(5, 14, 28, 0.75);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand h1 { margin: 0; font-size: 1.1rem; }
+    .brand small { color: var(--muted); }
+    .hud { display: grid; grid-template-columns: repeat(8, minmax(110px, 1fr)); gap: 8px; }
+    .stat { background: rgba(19, 36, 68, 0.8); border: 1px solid var(--line); border-radius: 10px; padding: 6px 9px; }
+    .label { color: var(--muted); font-size: 0.72rem; }
+    .value { font-weight: 700; margin-top: 2px; }
+
+    main { display: grid; grid-template-columns: 340px 1fr 460px; gap: 12px; padding: 12px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, rgba(18,36,69,.95), rgba(13,25,48,.95)); box-shadow: 0 10px 24px rgba(0,0,0,0.25); }
+    .panel h2 { margin: 0; font-size: .92rem; border-bottom: 1px solid var(--line); background: rgba(31, 56, 99, .72); padding: 10px 12px; }
+    .panel-content { padding: 10px; }
+    .tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 8px; }
+    .tab-btn, button {
+      border: 1px solid #3c649f; background: #193669; color: var(--text); border-radius: 8px; font-size: .74rem; padding: 7px; cursor: pointer;
+    }
+    .tab-btn.active { background: linear-gradient(180deg, #3474d8, #1f4687); border-color: #74acff; }
+    button { background: linear-gradient(180deg, #41a4ff, #2265bb); border: 0; font-weight: 600; }
+    button:disabled { background: #2a4672; color: #90acd4; cursor: not-allowed; }
+
+    .list { max-height: 72vh; overflow: auto; display: grid; gap: 7px; padding-right: 3px; }
+    .card { border: 1px solid #355b95; border-radius: 10px; padding: 8px; background: var(--panel-soft); }
+    .card strong { font-size: .88rem; display: block; }
+    .card small { color: var(--muted); display: block; margin-top: 3px; }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 9px; }
+    .metric { border: 1px solid #355a93; border-radius: 10px; background: #13294f; padding: 9px; }
+    .fleet-filter { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 8px; }
+    select, input[type="range"], input[type="text"], input[type="number"] { width: 100%; border-radius: 8px; border: 1px solid #3d67a5; background: #10274d; color: var(--text); padding: 7px; }
+    .row-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 7px; }
+    .row-btns-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
+    .row-btns-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+    .customize { margin-top: 8px; display: grid; gap: 5px; border-top: 1px dashed #4872b3; padding-top: 8px; }
+    .owned-list, .log, .leaderboard, .staff-list { max-height: 220px; overflow: auto; display: grid; gap: 6px; }
+    .log-entry { font-size: .79rem; border-left: 3px solid #5a8bce; background: rgba(14,28,53,.72); border-radius: 0 8px 8px 0; padding: 6px; }
+    .pill { display:inline-block; font-size:.66rem; padding: 2px 6px; border-radius:999px; border:1px solid #6991cd; color:#d7e8ff; margin-left: 4px; }
+    .sim-controls { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .route-viewer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .route-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #b8d2ff; font-size: .74rem; margin-top: 4px; }
+
+    @media (max-width: 1700px) { main { grid-template-columns: 1fr; } .hud { grid-template-columns: repeat(4, 1fr); } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>✈ Sky Dominion Tycoon: Workforce Command Edition</h1>
+      <small>Ultra-detailed hiring management with per-person control, advanced training, 400+ workforce features, and expanded leaderboard.</small>
+    </div>
+    <div class="hud">
+      <div class="stat"><div class="label">Cash</div><div class="value" id="cash">$0</div></div>
+      <div class="stat"><div class="label">Pax / Tick</div><div class="value" id="pax">0</div></div>
+      <div class="stat"><div class="label">Reputation</div><div class="value" id="rep">0</div></div>
+      <div class="stat"><div class="label">World Rank</div><div class="value" id="rank">#0</div></div>
+      <div class="stat"><div class="label">Fuel ($/barrel)</div><div class="value" id="fuelPrice">0</div></div>
+      <div class="stat"><div class="label">Total Staff</div><div class="value" id="staff">0</div></div>
+      <div class="stat"><div class="label">Owned Aircraft</div><div class="value" id="ownedAircraft">0</div></div>
+      <div class="stat"><div class="label">Simulation Speed</div><div class="value" id="simSpeed">1x</div></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Global Systems Market</h2>
+      <div class="panel-content">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="routes">Routes</button>
+          <button class="tab-btn" data-tab="airports">Airports</button>
+          <button class="tab-btn" data-tab="hubs">Hubs</button>
+          <button class="tab-btn" data-tab="research">Research</button>
+          <button class="tab-btn" data-tab="contracts">Contracts</button>
+          <button class="tab-btn" data-tab="special">Special</button>
+        </div>
+        <div class="list" id="marketContent"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Aircraft, Routes & Simulation Core <span class="pill">360 Aircraft + 140 Routes</span></h2>
+      <div class="panel-content">
+        <div class="metric-grid">
+          <div class="metric"><div class="label">Owned Routes</div><div class="value" id="ownedRoutes">0</div></div>
+          <div class="metric"><div class="label">Owned Airports</div><div class="value" id="ownedAirports">0</div></div>
+          <div class="metric"><div class="label">Hubs Controlled</div><div class="value" id="ownedHubs">0</div></div>
+          <div class="metric"><div class="label">Feature Unlocks</div><div class="value" id="featureUnlocks">0 / 4000</div></div>
+          <div class="metric"><div class="label">Lease Income / Tick</div><div class="value" id="leaseIncome">$0</div></div>
+          <div class="metric"><div class="label">Fuel Burn / Tick</div><div class="value" id="fuelBurn">0</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:8px;">
+          <strong>Simulation Controls</strong>
+          <div class="sim-controls" id="simControls">
+            <button data-speed="1">1x</button>
+            <button data-speed="2">2x</button>
+            <button data-speed="3">3x</button>
+            <button data-speed="5">5x</button>
+            <button data-speed="8">8x</button>
+          </div>
+        </div>
+
+        <div class="fleet-filter">
+          <select id="categoryFilter">
+            <option value="ALL">All aircraft categories</option>
+            <option value="Regional">Regional</option>
+            <option value="Narrowbody">Narrowbody</option>
+            <option value="Widebody">Widebody</option>
+            <option value="Cargo">Cargo</option>
+            <option value="VIP">VIP</option>
+          </select>
+          <select id="sortFilter">
+            <option value="price">Sort by price</option>
+            <option value="range">Sort by range</option>
+            <option value="capacity">Sort by capacity</option>
+            <option value="efficiency">Sort by efficiency</option>
+          </select>
+        </div>
+
+        <div class="list" id="aircraftCatalog"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Live Operations, Leaderboard & HR Detail</h2>
+      <div class="panel-content">
+        <div class="card">
+          <strong>Airline Leaderboard (30+ Airlines, Live)</strong>
+          <div class="leaderboard" id="leaderboard"></div>
+        </div>
+
+        <div class="card" style="margin-top:8px;">
+          <strong>Advanced Route Viewer & Customizer</strong>
+          <div class="route-viewer-grid">
+            <select id="routeSelect"></select>
+            <input type="text" id="routeRename" placeholder="Custom route name" />
+          </div>
+          <div class="customize">
+            <label class="label">Ticket Price Level <input type="range" id="routePrice" min="50" max="220" value="100" /></label>
+            <label class="label">Service Quality <input type="range" id="routeService" min="0" max="10" value="5" /></label>
+            <label class="label">Cargo Mix <input type="range" id="routeCargo" min="0" max="10" value="4" /></label>
+            <button id="applyRouteCustom">Apply Route Customization</button>
+          </div>
+          <div class="route-path" id="routePath"></div>
+        </div>
+
+        <div class="card" style="margin-top:8px;">
+          <strong>Detailed Hiring Command</strong>
+          <small>Browse every employee, adjust wage, promote/change position, train pilot skill tracks, and tune workforce behavior.</small>
+          <div class="row-btns-4">
+            <button id="hire10Btn">Hire 10</button>
+            <button id="hire50Btn">Hire 50</button>
+            <button id="trainingBtn">Global Training</button>
+            <button id="pilotAcademyBtn">Pilot Academy</button>
+          </div>
+          <div class="fleet-filter" style="margin-top:6px;">
+            <select id="staffDeptFilter">
+              <option value="ALL">All departments</option>
+              <option value="Pilot">Pilot</option>
+              <option value="Cabin">Cabin</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Dispatch">Dispatch</option>
+              <option value="Security">Security</option>
+              <option value="Analyst">Analyst</option>
+            </select>
+            <input type="text" id="staffSearch" placeholder="Search employee name" />
+          </div>
+          <small id="workforceMeta"></small>
+          <div class="staff-list" id="staffList"></div>
+        </div>
+
+        <div class="card" style="margin-top:8px;">
+          <strong>Owned Aircraft Registry</strong>
+          <div class="owned-list" id="ownedFleet"></div>
+        </div>
+
+        <div class="card" style="margin-top:8px;">
+          <strong>Live Event Log</strong>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const firstNames = ["Aiden","Bella","Caleb","Diana","Evan","Farah","Gavin","Hana","Isaac","Jade","Kai","Lina","Mason","Nora","Omar","Priya","Quinn","Ravi","Sora","Tariq","Uma","Vera","Wes","Xena","Yuri","Zara"];
+    const lastNames = ["Adler","Bennet","Chen","Diaz","Evans","Frost","Geller","Holt","Ibrahim","Jensen","Khan","Lopez","Mori","Nakamura","Owens","Patel","Quincy","Rossi","Singh","Turner","Ulrich","Valdez","Wong","Xu","Young","Zane"];
+    const deptList = ["Pilot", "Cabin", "Maintenance", "Dispatch", "Security", "Analyst"];
+
+    const state = {
+      cash: 1450000,
+      paxPerTick: 400,
+      rep: 58,
+      rank: 120,
+      routesOwned: 0,
+      airportsOwned: 0,
+      hubsOwned: 1,
+      unlocks: 0,
+      leaseIncome: 0,
+      fuelPrice: 92,
+      fuelBurn: 0,
+      simulationSpeed: 1,
+      simIntervalMs: 1700,
+      tick: 0,
+      ownedAircraft: [],
+      workforceFeatures: 400,
+      staffMembers: []
+    };
+
+    function randomName(seed) {
+      return `${firstNames[seed % firstNames.length]} ${lastNames[(seed * 7) % lastNames.length]}`;
+    }
+
+    function createEmployee(seed = Math.floor(Math.random() * 100000)) {
+      const dept = deptList[seed % deptList.length];
+      const baseWage = { Pilot: 9800, Cabin: 4100, Maintenance: 5300, Dispatch: 4800, Security: 3900, Analyst: 6200 }[dept];
+      return {
+        id: `EMP-${Date.now()}-${Math.floor(Math.random() * 9999)}-${seed}`,
+        name: randomName(seed),
+        dept,
+        position: {
+          Pilot: ["First Officer", "Captain", "Senior Captain"],
+          Cabin: ["Cabin Crew", "Purser", "Cabin Manager"],
+          Maintenance: ["Technician", "Senior Tech", "Chief Engineer"],
+          Dispatch: ["Dispatcher", "Senior Dispatcher", "Ops Controller"],
+          Security: ["Officer", "Lead Officer", "Security Chief"],
+          Analyst: ["Analyst", "Senior Analyst", "Strategy Lead"],
+        }[dept][seed % 3],
+        wage: baseWage + (seed % 1800),
+        morale: 55 + (seed % 46),
+        skill: 38 + (seed % 57),
+        fatigue: 5 + (seed % 40),
+        flightHours: dept === 'Pilot' ? 600 + (seed % 5600) : 0,
+        certifications: dept === 'Pilot' ? ['IFR', 'ETOPS'].slice(0, 1 + (seed % 2)) : ['Standard'],
+      };
+    }
+
+    for (let i = 0; i < 220; i++) state.staffMembers.push(createEmployee(i + 1));
+
+    const money = n => `$${Math.floor(n).toLocaleString()}`;
+    const totalStaff = () => state.staffMembers.length;
+
+    const regions = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania"];
+    const airportPrefixes = ["Astra", "BlueSky", "Crescent", "Drift", "Eagle", "Falcon", "Global", "Harbor", "Ion", "Jetway", "King", "Lunar", "Metro", "Nova", "Orbit", "Polar"];
+    const locations = Array.from({ length: 260 }, (_, i) => ({
+      name: `${airportPrefixes[i % airportPrefixes.length]}-${i + 1}`,
+      region: regions[i % regions.length],
+      demand: 100 + (i * 17) % 300,
+      airportClass: ["Regional", "Metro", "International", "Mega"][i % 4]
+    }));
+
+    const routeMarket = locations.slice(0, 140).map((loc, i) => ({
+      id: `R-${i+1}`,
+      name: `Skyline Corridor ${i + 1}`,
+      from: locations[(i * 2) % locations.length].name,
+      to: locations[(i * 2 + 37) % locations.length].name,
+      detail: `${loc.region} • demand ${loc.demand}`,
+      price: 32000 + i * 2100,
+      paxBoost: 15 + (i % 30),
+      bought: false,
+      custom: { ticket: 100, service: 5, cargo: 4, alias: '' }
+    }));
+
+    const airportMarket = locations.slice(140, 245).map((loc, i) => ({
+      name: `${loc.name} ${loc.airportClass} Airport`,
+      detail: `${loc.region} • class ${loc.airportClass} • demand ${loc.demand}`,
+      price: 80000 + i * 9500,
+      opsBonus: 1.01 + (i % 10) * 0.008,
+      bought: false
+    }));
+
+    const hubMarket = locations.slice(60, 160).map((loc, i) => ({
+      name: `${loc.name} Intercontinental Hub`,
+      detail: `${loc.region} • slots ${8 + i % 11}`,
+      price: 120000 + i * 10200,
+      multiplier: 1.03 + (i % 9) * 0.015,
+      bought: false
+    }));
+
+    const researchDomains = ["Automation","Fuel","Cabin","AI Dispatch","Meteorology","Safety","Brand","Cargo","Security","Training","Navigation","Hospitality"];
+    const researchFocus = ["Optimizers","Cores","Clouds","Matrix","Protocols","Simulation","Quantum Mesh","Eco Layer","Predictive Grid","UX Streams","Ops Forge","Twin Systems"];
+    const researchTree = [];
+    let totalFeatures = 0;
+    for (let t = 1; t <= 25; t++) {
+      for (let d = 0; d < researchDomains.length; d++) {
+        for (let f = 0; f < researchFocus.length; f++) {
+          totalFeatures++;
+          if (totalFeatures % 9 === 0) {
+            researchTree.push({
+              name: `${researchDomains[d]} T${t} - ${researchFocus[f]}`,
+              detail: `Unlocks 9 systems • rep +${1 + t % 3}`,
+              price: 26000 + t * 5000 + d * 1700,
+              repGain: 1 + t % 3,
+              unlocked: false
+            });
+          }
+        }
+      }
+    }
+
+    const contracts = [
+      { name: "High Altitude Tourism League", detail: "Demand and premium ticket bonus", price: 65000, bought: false, effect: () => state.paxPerTick *= 1.06 },
+      { name: "Defense Airlift Corridor", detail: "Cargo reliability and rank boost", price: 76000, bought: false, effect: () => { state.rep += 4; state.paxPerTick += 70; } },
+      { name: "Alliance Mega Codeshare", detail: "Cross-feed passengers globally", price: 98000, bought: false, effect: () => state.paxPerTick *= 1.1 },
+      { name: "Premium Corporate Shuttle", detail: "Lease income contracts", price: 88000, bought: false, effect: () => state.leaseIncome += 6200 }
+    ];
+
+    const specials = [
+      { name: "Fuel Hedging Desk", detail: "Reduce fuel volatility for 12 ticks", price: 110000, run: () => { fuelShield = 12; } },
+      { name: "AI Crew Optimizer", detail: "Improves staff efficiency and lowers ops costs", price: 124000, run: () => { state.rep += 7; state.paxPerTick *= 1.08; } },
+      { name: "Global Brand Blitz", detail: "Massive reputation campaign", price: 130000, run: () => { state.rep += 10; } }
+    ];
+
+    const families = ["AeroLiner", "SkyForge", "NimbusJet", "CobaltWing", "FalconArc", "StratoLift", "SolarisAir", "VortexOne", "AtlasBird", "ZenithFly"];
+    const variants = ["Nova", "Prime", "Vector", "Pulse", "Vertex", "Mirage", "Voyager", "Echo", "Pioneer", "Apex", "Crown", "Swift"];
+    const categories = ["Regional", "Narrowbody", "Widebody", "Cargo", "VIP"];
+    const aircraftCatalog = Array.from({ length: 360 }, (_, i) => ({
+      id: `AC-${i + 1}`,
+      name: `${families[i % families.length]} ${variants[Math.floor(i / 10) % variants.length]}-${200 + i}`,
+      category: categories[i % categories.length],
+      range: 1800 + (i % 20) * 420,
+      capacity: 40 + (i % 35) * 11,
+      efficiency: Number((1 + ((i * 7) % 18) / 10).toFixed(2)),
+      price: 90000 + i * 6200,
+      leaseRate: 1800 + (i % 25) * 280,
+      burnRate: 7 + (i % 18) * 0.9,
+    }));
+
+    const competitors = [
+      "Titan Airways", "Blue Meridian", "Aurora Global", "Pulse Atlantic", "CrownJet Union", "VectorFly Group", "Skyward Line", "Nimbus Continental", "Orbital Wings", "Summit Air Holdings", "ZenJet Alliance", "NorthBridge Airways", "Pacific Halo", "Cobalt National", "Falcon Horizon", "Alpine Jet", "Metro Airlink", "Aether Cargo", "Helio Wings", "Delta Nova", "SouthStar Airlines", "Westbound Air", "Atlas Premium", "Prime Route Air", "Lunar Fleet", "Golden Stratos", "Kingbird Airways", "UrbanLift", "Silver Cloud Air", "Emerald Flights", "Polar Axis Air", "Eagle Nexus", "Bridgeway Airlines", "Infinite Air Group"
+    ].map((name, idx) => ({ name, strength: 45 + (idx * 3) % 38 }));
+
+    const marketContent = document.getElementById('marketContent');
+    const aircraftCatalogEl = document.getElementById('aircraftCatalog');
+    const ownedFleetEl = document.getElementById('ownedFleet');
+    const logEl = document.getElementById('log');
+    const leaderboardEl = document.getElementById('leaderboard');
+    const staffListEl = document.getElementById('staffList');
+
+    let simulationTimer = null;
+    let fuelShield = 0;
+
+    function addLog(message) {
+      const row = document.createElement('div');
+      row.className = 'log-entry';
+      row.textContent = `[Y${Math.floor(state.tick / 12) + 1} M${(state.tick % 12) + 1}] ${message}`;
+      logEl.prepend(row);
+      while (logEl.children.length > 90) logEl.removeChild(logEl.lastChild);
+    }
+
+    function getStaffStats() {
+      const wages = state.staffMembers.reduce((a, s) => a + s.wage, 0);
+      const avgSkill = state.staffMembers.length ? state.staffMembers.reduce((a, s) => a + s.skill, 0) / state.staffMembers.length : 0;
+      return { wages, avgSkill };
+    }
+
+    function updateRank() {
+      const { avgSkill } = getStaffStats();
+      state.rank = Math.max(1, 280 - state.rep - Math.floor(state.paxPerTick / 30) - state.hubsOwned * 2 - Math.floor(avgSkill / 6));
+    }
+
+    function updateHUD() {
+      document.getElementById('cash').textContent = money(state.cash);
+      document.getElementById('pax').textContent = Math.floor(state.paxPerTick).toLocaleString();
+      document.getElementById('rep').textContent = state.rep;
+      document.getElementById('rank').textContent = `#${state.rank}`;
+      document.getElementById('fuelPrice').textContent = state.fuelPrice.toFixed(2);
+      document.getElementById('staff').textContent = totalStaff().toLocaleString();
+      document.getElementById('ownedAircraft').textContent = state.ownedAircraft.length;
+      document.getElementById('simSpeed').textContent = `${state.simulationSpeed}x`;
+      document.getElementById('ownedRoutes').textContent = state.routesOwned;
+      document.getElementById('ownedAirports').textContent = state.airportsOwned;
+      document.getElementById('ownedHubs').textContent = state.hubsOwned;
+      document.getElementById('featureUnlocks').textContent = `${state.unlocks + state.workforceFeatures} / ${totalFeatures + 400}`;
+      document.getElementById('leaseIncome').textContent = money(state.leaseIncome);
+      document.getElementById('fuelBurn').textContent = state.fuelBurn.toFixed(1);
+
+      const { wages, avgSkill } = getStaffStats();
+      document.getElementById('workforceMeta').textContent = `Workforce modules: ${state.workforceFeatures}+ • Avg skill ${avgSkill.toFixed(1)} • Monthly wages ${money(wages)}.`;
+    }
+
+    function purchase(price, callback) {
+      if (state.cash < price) return false;
+      state.cash -= price;
+      callback();
+      updateRank();
+      updateHUD();
+      return true;
+    }
+
+    function renderMarket(type) {
+      let data = [];
+      if (type === 'routes') data = routeMarket;
+      if (type === 'airports') data = airportMarket;
+      if (type === 'hubs') data = hubMarket;
+      if (type === 'research') data = researchTree;
+      if (type === 'contracts') data = contracts;
+      if (type === 'special') data = specials;
+
+      marketContent.innerHTML = '';
+      data.slice(0, 34).forEach(item => {
+        const c = document.createElement('div');
+        c.className = 'card';
+        const routePath = type === 'routes' ? `<small class="route-path">${item.from} ⇄ ${item.to}</small>` : '';
+        c.innerHTML = `<strong>${item.name}</strong><small>${item.detail}</small>${routePath}`;
+        const b = document.createElement('button');
+
+        if (type === 'special') {
+          b.textContent = `Execute ${money(item.price)}`;
+          b.onclick = () => {
+            const ok = purchase(item.price, () => { item.run(); addLog(`${item.name} executed.`); });
+            if (!ok) addLog(`Not enough cash for ${item.name}.`);
+          };
+        } else {
+          b.textContent = item.bought || item.unlocked ? 'Completed' : `Acquire ${money(item.price)}`;
+          b.disabled = item.bought || item.unlocked;
+          b.onclick = () => {
+            const ok = purchase(item.price, () => {
+              if (type === 'routes') {
+                item.bought = true;
+                state.routesOwned++;
+                state.paxPerTick += item.paxBoost;
+                state.rep += 1;
+                addLog(`Opened ${item.name} (${item.from} ⇄ ${item.to}).`);
+                populateRouteViewer();
+              }
+              if (type === 'airports') {
+                item.bought = true;
+                state.airportsOwned++;
+                state.paxPerTick *= item.opsBonus;
+                state.rep += 1;
+                addLog(`Acquired ${item.name}; operations x${item.opsBonus.toFixed(2)}.`);
+              }
+              if (type === 'hubs') {
+                item.bought = true;
+                state.hubsOwned++;
+                state.paxPerTick *= item.multiplier;
+                state.rep += 2;
+                addLog(`Hub activated: ${item.name} (x${item.multiplier.toFixed(2)} demand).`);
+              }
+              if (type === 'research') {
+                item.unlocked = true;
+                state.unlocks += 9;
+                state.rep += item.repGain;
+                state.paxPerTick += item.repGain * 4;
+                addLog(`Research complete: ${item.name}.`);
+              }
+              if (type === 'contracts') {
+                item.bought = true;
+                item.effect();
+                state.rep += 2;
+                addLog(`Contract signed: ${item.name}.`);
+              }
+            });
+            if (!ok) addLog(`Cannot afford ${item.name}.`);
+            renderMarket(type);
+          };
+        }
+        c.appendChild(b);
+        marketContent.appendChild(c);
+      });
+    }
+
+    function renderAircraftCatalog() {
+      const category = document.getElementById('categoryFilter').value;
+      const sortBy = document.getElementById('sortFilter').value;
+      const data = aircraftCatalog
+        .filter(a => category === 'ALL' || a.category === category)
+        .sort((a, b) => b[sortBy] - a[sortBy]);
+
+      aircraftCatalogEl.innerHTML = '';
+      data.slice(0, 42).forEach(aircraft => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <strong>${aircraft.name} <span class="pill">${aircraft.category}</span></strong>
+          <small>Range ${aircraft.range} km • Capacity ${aircraft.capacity} • Efficiency x${aircraft.efficiency}</small>
+          <small>Buy ${money(aircraft.price)} • Lease ${money(aircraft.leaseRate)}/tick • Burn ${aircraft.burnRate.toFixed(1)} bbl/tick</small>
+        `;
+        const config = document.createElement('div');
+        config.className = 'customize';
+        config.innerHTML = `
+          <label class="label">Cabin Luxury <input type="range" min="0" max="10" value="5" data-key="luxury"></label>
+          <label class="label">Cargo Conversion <input type="range" min="0" max="10" value="3" data-key="cargo"></label>
+          <label class="label">Avionics Upgrade <input type="range" min="0" max="10" value="4" data-key="avionics"></label>
+        `;
+        const btns = document.createElement('div');
+        btns.className = 'row-btns';
+        const order = document.createElement('button');
+        const lease = document.createElement('button');
+        const spec = document.createElement('button');
+        order.textContent = 'Order';
+        lease.textContent = 'Order+Lease';
+        spec.textContent = 'Spec';
+
+        function createOrder(mode) {
+          const sliders = [...config.querySelectorAll('input[type="range"]')];
+          const mods = Object.fromEntries(sliders.map(s => [s.dataset.key, Number(s.value)]));
+          const modCost = (mods.luxury + mods.cargo + mods.avionics) * 1500;
+          const total = aircraft.price + modCost;
+          const ok = purchase(total, () => {
+            const plane = {
+              uid: `${aircraft.id}-${Date.now()}-${Math.floor(Math.random() * 999)}`,
+              name: aircraft.name,
+              category: aircraft.category,
+              baseValue: aircraft.price,
+              leaseRate: aircraft.leaseRate,
+              burnRate: aircraft.burnRate,
+              mods,
+              status: mode === 'lease' ? 'Leased Out' : 'Operational'
+            };
+            state.ownedAircraft.push(plane);
+            state.paxPerTick += Math.floor(aircraft.capacity * 0.18) + mods.luxury;
+            state.rep += 1 + Math.floor(mods.avionics / 4);
+            state.fuelBurn += aircraft.burnRate * (1 + mods.cargo * 0.02);
+            if (mode === 'lease') state.leaseIncome += aircraft.leaseRate + mods.luxury * 100;
+            addLog(`${mode === 'lease' ? 'Ordered and leased' : 'Ordered'} ${aircraft.name} [L${mods.luxury}/C${mods.cargo}/A${mods.avionics}].`);
+            renderOwnedFleet();
+          });
+          if (!ok) addLog(`Insufficient budget for ${aircraft.name}.`);
+        }
+
+        order.onclick = () => createOrder('buy');
+        lease.onclick = () => createOrder('lease');
+        spec.onclick = () => addLog(`Spec: ${aircraft.name} | range ${aircraft.range} km | seats ${aircraft.capacity} | burn ${aircraft.burnRate.toFixed(1)}.`);
+
+        btns.append(order, lease, spec);
+        card.append(config, btns);
+        aircraftCatalogEl.appendChild(card);
+      });
+    }
+
+    function renderOwnedFleet() {
+      ownedFleetEl.innerHTML = '';
+      if (!state.ownedAircraft.length) {
+        const empty = document.createElement('small');
+        empty.style.color = 'var(--muted)';
+        empty.textContent = 'No aircraft owned yet. Order from the catalog.';
+        ownedFleetEl.appendChild(empty);
+        return;
+      }
+
+      state.ownedAircraft.slice(-25).reverse().forEach(plane => {
+        const row = document.createElement('div');
+        row.className = 'card';
+        row.innerHTML = `<strong>${plane.name}</strong><small>${plane.category} • ${plane.status} • Mods L${plane.mods.luxury}/C${plane.mods.cargo}/A${plane.mods.avionics}</small>`;
+        const actions = document.createElement('div');
+        actions.className = 'row-btns';
+        const sell = document.createElement('button');
+        const rent = document.createElement('button');
+        const refurb = document.createElement('button');
+        sell.textContent = 'Sell';
+        rent.textContent = plane.status === 'Leased Out' ? 'Recall' : 'Lease';
+        refurb.textContent = 'Refurbish';
+
+        sell.onclick = () => {
+          const resale = Math.floor(plane.baseValue * (0.6 + Math.random() * 0.22)) + (plane.mods.luxury + plane.mods.avionics) * 900;
+          state.cash += resale;
+          state.paxPerTick = Math.max(140, state.paxPerTick - 20);
+          state.fuelBurn = Math.max(0, state.fuelBurn - plane.burnRate * (1 + plane.mods.cargo * 0.02));
+          if (plane.status === 'Leased Out') state.leaseIncome = Math.max(0, state.leaseIncome - (plane.leaseRate + plane.mods.luxury * 100));
+          state.ownedAircraft = state.ownedAircraft.filter(p => p.uid !== plane.uid);
+          addLog(`Sold ${plane.name} for ${money(resale)}.`);
+          updateRank();
+          updateHUD();
+          renderOwnedFleet();
+        };
+
+        rent.onclick = () => {
+          if (plane.status === 'Leased Out') {
+            plane.status = 'Operational';
+            state.leaseIncome = Math.max(0, state.leaseIncome - (plane.leaseRate + plane.mods.luxury * 100));
+            state.paxPerTick += 18;
+            addLog(`Recalled ${plane.name} from lease.`);
+          } else {
+            plane.status = 'Leased Out';
+            state.leaseIncome += plane.leaseRate + plane.mods.luxury * 100;
+            state.paxPerTick = Math.max(120, state.paxPerTick - 14);
+            addLog(`Leased out ${plane.name}.`);
+          }
+          updateRank();
+          updateHUD();
+          renderOwnedFleet();
+        };
+
+        refurb.onclick = () => {
+          const cost = 13000 + plane.mods.avionics * 1500;
+          const ok = purchase(cost, () => {
+            plane.mods.luxury = Math.min(10, plane.mods.luxury + 1);
+            plane.mods.avionics = Math.min(10, plane.mods.avionics + 1);
+            state.rep += 1;
+            state.paxPerTick += 9;
+            addLog(`Refurbished ${plane.name}.`);
+          });
+          if (!ok) addLog(`Not enough funds to refurbish ${plane.name}.`);
+          renderOwnedFleet();
+        };
+
+        actions.append(sell, rent, refurb);
+        row.appendChild(actions);
+        ownedFleetEl.appendChild(row);
+      });
+    }
+
+    function populateRouteViewer() {
+      const select = document.getElementById('routeSelect');
+      select.innerHTML = '';
+      const ownedRoutes = routeMarket.filter(r => r.bought);
+      const list = ownedRoutes.length ? ownedRoutes : routeMarket.slice(0, 20);
+      list.forEach(route => {
+        const opt = document.createElement('option');
+        opt.value = route.id;
+        opt.textContent = `${route.custom.alias || route.name} (${route.from} ⇄ ${route.to})`;
+        select.appendChild(opt);
+      });
+      renderRouteDetails();
+    }
+
+    function renderRouteDetails() {
+      const selected = document.getElementById('routeSelect').value;
+      const route = routeMarket.find(r => r.id === selected) || routeMarket[0];
+      if (!route) return;
+      document.getElementById('routeRename').value = route.custom.alias;
+      document.getElementById('routePrice').value = route.custom.ticket;
+      document.getElementById('routeService').value = route.custom.service;
+      document.getElementById('routeCargo').value = route.custom.cargo;
+      document.getElementById('routePath').textContent = `${route.from} ⇄ ${route.to} | Ticket ${route.custom.ticket}% | Service ${route.custom.service}/10 | Cargo ${route.custom.cargo}/10`;
+    }
+
+    function applyRouteCustomization() {
+      const selected = document.getElementById('routeSelect').value;
+      const route = routeMarket.find(r => r.id === selected);
+      if (!route) return;
+      route.custom.alias = document.getElementById('routeRename').value.trim();
+      route.custom.ticket = Number(document.getElementById('routePrice').value);
+      route.custom.service = Number(document.getElementById('routeService').value);
+      route.custom.cargo = Number(document.getElementById('routeCargo').value);
+
+      const serviceBonus = route.custom.service * 0.8;
+      const cargoBonus = route.custom.cargo * 0.6;
+      const ticketImpact = (route.custom.ticket - 100) * -0.25;
+      state.paxPerTick = Math.max(100, state.paxPerTick + serviceBonus + cargoBonus + ticketImpact);
+      state.rep += route.custom.service >= 7 ? 1 : 0;
+
+      addLog(`Route customized: ${route.custom.alias || route.name} (${route.from} ⇄ ${route.to}).`);
+      renderRouteDetails();
+      populateRouteViewer();
+      updateRank();
+      updateHUD();
+    }
+
+    function renderStaff() {
+      const dept = document.getElementById('staffDeptFilter').value;
+      const query = document.getElementById('staffSearch').value.trim().toLowerCase();
+      staffListEl.innerHTML = '';
+
+      const filtered = state.staffMembers.filter(s => (dept === 'ALL' || s.dept === dept) && (!query || s.name.toLowerCase().includes(query)));
+      filtered.slice(0, 80).forEach(person => {
+        const row = document.createElement('div');
+        row.className = 'card';
+        row.innerHTML = `<strong>${person.name} <span class="pill">${person.dept}</span></strong><small>${person.position} • Skill ${person.skill} • Morale ${person.morale} • Fatigue ${person.fatigue} • Wage ${money(person.wage)}</small>`;
+
+        if (person.dept === 'Pilot') {
+          const p = document.createElement('small');
+          p.textContent = `Flight hours ${person.flightHours} • Certs: ${person.certifications.join(', ')}`;
+          row.appendChild(p);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'row-btns-4';
+        const wageUp = document.createElement('button'); wageUp.textContent = '+Wage';
+        const wageDown = document.createElement('button'); wageDown.textContent = '-Wage';
+        const position = document.createElement('button'); position.textContent = 'Change Position';
+        const train = document.createElement('button'); train.textContent = person.dept === 'Pilot' ? 'Train Pilot' : 'Train';
+
+        wageUp.onclick = () => {
+          const cost = 1200;
+          const ok = purchase(cost, () => {
+            person.wage += 220;
+            person.morale = Math.min(100, person.morale + 3);
+            addLog(`Wage increased for ${person.name}.`);
+          });
+          if (!ok) addLog('Cannot process wage increase: budget too low.');
+          renderStaff();
+        };
+
+        wageDown.onclick = () => {
+          person.wage = Math.max(2500, person.wage - 180);
+          person.morale = Math.max(20, person.morale - 4);
+          addLog(`Wage adjusted down for ${person.name}.`);
+          updateHUD();
+          renderStaff();
+        };
+
+        position.onclick = () => {
+          const tracks = {
+            Pilot: ["First Officer", "Captain", "Senior Captain", "Fleet Check Airman"],
+            Cabin: ["Cabin Crew", "Purser", "Cabin Manager", "Service Director"],
+            Maintenance: ["Technician", "Senior Tech", "Chief Engineer", "Reliability Lead"],
+            Dispatch: ["Dispatcher", "Senior Dispatcher", "Ops Controller", "Network Controller"],
+            Security: ["Officer", "Lead Officer", "Security Chief", "Compliance Lead"],
+            Analyst: ["Analyst", "Senior Analyst", "Strategy Lead", "Chief Planner"]
+          };
+          const i = tracks[person.dept].indexOf(person.position);
+          person.position = tracks[person.dept][(i + 1) % tracks[person.dept].length];
+          person.skill = Math.min(100, person.skill + 2);
+          addLog(`${person.name} moved to ${person.position}.`);
+          updateHUD();
+          renderStaff();
+        };
+
+        train.onclick = () => {
+          const cost = person.dept === 'Pilot' ? 9800 : 4800;
+          const ok = purchase(cost, () => {
+            person.skill = Math.min(100, person.skill + (person.dept === 'Pilot' ? 6 : 4));
+            person.morale = Math.min(100, person.morale + 2);
+            person.fatigue = Math.max(0, person.fatigue - 6);
+            if (person.dept === 'Pilot') {
+              person.flightHours += 80;
+              if (person.skill > 86 && !person.certifications.includes('Type-Rating-X')) person.certifications.push('Type-Rating-X');
+              state.rep += 1;
+            }
+            addLog(`Training completed for ${person.name}.`);
+          });
+          if (!ok) addLog(`Not enough funds to train ${person.name}.`);
+          renderStaff();
+        };
+
+        actions.append(wageUp, wageDown, position, train);
+        row.appendChild(actions);
+        staffListEl.appendChild(row);
+      });
+    }
+
+    function hirePeople(count) {
+      const cost = count * 2600;
+      const ok = purchase(cost, () => {
+        const start = state.staffMembers.length + 1;
+        for (let i = 0; i < count; i++) state.staffMembers.push(createEmployee(start + i));
+        state.paxPerTick += count * 0.9;
+        state.rep += Math.floor(count / 20);
+        addLog(`Hired ${count} new employees into categorized departments.`);
+      });
+      if (!ok) addLog('Not enough budget for hiring package.');
+      renderStaff();
+    }
+
+    function globalTraining() {
+      const cost = totalStaff() * 320;
+      const ok = purchase(cost, () => {
+        state.staffMembers.forEach(s => {
+          s.skill = Math.min(100, s.skill + 1);
+          s.morale = Math.min(100, s.morale + 1);
+          s.fatigue = Math.max(0, s.fatigue - 2);
+        });
+        state.paxPerTick *= 1.03;
+        state.rep += 3;
+        addLog('Global workforce training executed across all departments.');
+      });
+      if (!ok) addLog('Global training cancelled: insufficient funds.');
+      renderStaff();
+    }
+
+    function pilotAcademy() {
+      const pilots = state.staffMembers.filter(s => s.dept === 'Pilot');
+      const cost = pilots.length * 700;
+      const ok = purchase(cost, () => {
+        pilots.forEach(p => {
+          p.skill = Math.min(100, p.skill + 3);
+          p.flightHours += 60;
+          p.fatigue = Math.max(0, p.fatigue - 4);
+          if (p.skill > 78 && !p.certifications.includes('Advanced CRM')) p.certifications.push('Advanced CRM');
+        });
+        state.rep += 4;
+        state.paxPerTick += 25;
+        addLog('Pilot academy cycle completed with upgraded pilot certifications.');
+      });
+      if (!ok) addLog('Pilot academy postponed due to low funds.');
+      renderStaff();
+    }
+
+    function renderLeaderboard() {
+      const { avgSkill } = getStaffStats();
+      const playerScore = Math.floor(state.rep * 18 + state.paxPerTick / 4 + state.routesOwned * 8 + state.ownedAircraft.length * 2 + state.airportsOwned * 4 + avgSkill * 6);
+      const board = competitors.map(c => ({ name: c.name, score: c.strength * 22 + Math.floor(Math.random() * 35) + state.tick % 12 }));
+      board.push({ name: 'Your Airline Group', score: playerScore });
+      board.sort((a, b) => b.score - a.score);
+      leaderboardEl.innerHTML = '';
+      board.slice(0, 25).forEach((row, idx) => {
+        const el = document.createElement('div');
+        el.className = 'log-entry';
+        el.innerHTML = `<strong>#${idx + 1} ${row.name}</strong> <small>${row.score.toLocaleString()} performance pts</small>`;
+        if (row.name === 'Your Airline Group') el.style.borderLeftColor = 'var(--good)';
+        leaderboardEl.appendChild(el);
+      });
+      const myIndex = board.findIndex(r => r.name === 'Your Airline Group');
+      state.rank = myIndex + 1;
+    }
+
+    function updateFuelPrice() {
+      const volatility = fuelShield > 0 ? 0.35 : 1;
+      const movement = (Math.random() * 4.6 - 2.2) * volatility;
+      state.fuelPrice = Math.max(52, Math.min(168, state.fuelPrice + movement));
+      if (fuelShield > 0) fuelShield--;
+    }
+
+    function runTick() {
+      state.tick++;
+      updateFuelPrice();
+      const { wages, avgSkill } = getStaffStats();
+      const staffFactor = 1 + avgSkill / 190;
+      const routeQualityFactor = 1 + routeMarket.filter(r => r.bought).reduce((acc, r) => acc + (r.custom.service - 5) * 0.002, 0);
+      const revenue = state.paxPerTick * (20 + Math.random() * 14) * staffFactor * routeQualityFactor;
+      const fuelCost = state.fuelBurn * state.fuelPrice * 3.3;
+      const payroll = wages * 0.08;
+      const opsCost = state.ownedAircraft.length * 1080 + state.routesOwned * 780 + state.hubsOwned * 2200 + state.airportsOwned * 620;
+      state.cash += revenue + state.leaseIncome - fuelCost - payroll - opsCost;
+
+      if (Math.random() < 0.12) {
+        const demand = 1 + Math.random() * 0.06;
+        state.paxPerTick *= demand;
+        addLog(`Market demand shifted ${demand > 1.03 ? 'upward' : 'slightly'} (x${demand.toFixed(2)}).`);
+      }
+
+      state.staffMembers.forEach(s => {
+        s.fatigue = Math.min(100, s.fatigue + 0.25 + Math.random() * 0.2);
+        if (s.fatigue > 85) s.morale = Math.max(10, s.morale - 0.4);
+      });
+
+      updateRank();
+      renderLeaderboard();
+      updateHUD();
+    }
+
+    function startSimulation() {
+      if (simulationTimer) clearInterval(simulationTimer);
+      simulationTimer = setInterval(() => {
+        for (let i = 0; i < state.simulationSpeed; i++) runTick();
+      }, state.simIntervalMs);
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+        btn.classList.add('active');
+        renderMarket(btn.dataset.tab);
+      };
+    });
+
+    document.getElementById('categoryFilter').onchange = renderAircraftCatalog;
+    document.getElementById('sortFilter').onchange = renderAircraftCatalog;
+    document.getElementById('routeSelect').onchange = renderRouteDetails;
+    document.getElementById('applyRouteCustom').onclick = applyRouteCustomization;
+    document.getElementById('staffDeptFilter').onchange = renderStaff;
+    document.getElementById('staffSearch').oninput = renderStaff;
+
+    document.querySelectorAll('#simControls button').forEach(btn => {
+      btn.onclick = () => {
+        state.simulationSpeed = Number(btn.dataset.speed);
+        updateHUD();
+        addLog(`Simulation speed set to ${state.simulationSpeed}x.`);
+      };
+    });
+
+    document.getElementById('hire10Btn').onclick = () => hirePeople(10);
+    document.getElementById('hire50Btn').onclick = () => hirePeople(50);
+    document.getElementById('trainingBtn').onclick = globalTraining;
+    document.getElementById('pilotAcademyBtn').onclick = pilotAcademy;
+
+    renderMarket('routes');
+    renderAircraftCatalog();
+    renderOwnedFleet();
+    populateRouteViewer();
+    renderLeaderboard();
+    renderStaff();
+    updateHUD();
+    addLog('Welcome CEO. Workforce Command Edition online: per-person staffing controls, pilot academy, expanded leaderboard, and advanced simulation.');
+    startSimulation();
+  </script>
+</body>
+</html>
