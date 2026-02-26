@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Win11 Pro Workspace</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="desktop" class="desktop">
+      <div class="wallpaper-overlay"></div>
+
+      <div class="desktop-icons" aria-label="Desktop Icons">
+        <button class="desktop-icon" data-app="explorer">
+          <span class="icon">📁</span>
+          <span>Explorer</span>
+        </button>
+        <button class="desktop-icon" data-app="docs">
+          <span class="icon">📄</span>
+          <span>Docs</span>
+        </button>
+        <button class="desktop-icon" data-app="browser">
+          <span class="icon">🌐</span>
+          <span>Browser</span>
+        </button>
+        <button class="desktop-icon" data-app="settings">
+          <span class="icon">⚙️</span>
+          <span>Settings</span>
+        </button>
+        <button class="desktop-icon" data-app="terminal">
+          <span class="icon">🖥️</span>
+          <span>Terminal</span>
+        </button>
+      </div>
+
+      <section id="windowLayer" class="window-layer" aria-live="polite"></section>
+
+      <aside id="startMenu" class="start-menu hidden" aria-label="Start Menu">
+        <div class="start-header">
+          <strong>Pinned</strong>
+        </div>
+        <div class="pinned-grid">
+          <button data-app="explorer">📁 File Explorer</button>
+          <button data-app="docs">📄 Docs</button>
+          <button data-app="browser">🌐 Browser</button>
+          <button data-app="settings">⚙️ Settings</button>
+          <button data-app="calculator">🧮 Calculator</button>
+          <button data-app="terminal">🖥️ Terminal</button>
+        </div>
+      </aside>
+
+      <footer class="taskbar">
+        <button id="startButton" class="taskbar-btn" aria-label="Start">⊞</button>
+        <div id="taskbarApps" class="taskbar-apps"></div>
+        <div class="system-tray">
+          <span id="clock"></span>
+        </div>
+      </footer>
+    </div>
+
+    <template id="windowTemplate">
+      <article class="window" role="dialog" aria-modal="false">
+        <header class="window-header">
+          <span class="window-title"></span>
+          <div class="window-controls">
+            <button class="minimize" title="Minimize">—</button>
+            <button class="maximize" title="Maximize">□</button>
+            <button class="close" title="Close">✕</button>
+          </div>
+        </header>
+        <div class="window-content"></div>
+      </article>
+    </template>
+
+    <script src="script.js"></script>
+  </body>
+</html>
