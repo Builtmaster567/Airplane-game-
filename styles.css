@@ -413,3 +413,100 @@ body.focus-mode .desktop { filter: saturate(0.85) hue-rotate(-15deg); }
   font-size: 0.8rem;
   color: #cfe3ff;
 }
+
+:root {
+  --accent-h: 208;
+  --window-opacity: 0.88;
+  --blur: 12px;
+  --wallpaper-intensity: 1;
+  --ui-font: "Segoe UI";
+  --font-scale: 1;
+  --desktop-saturation: 1;
+  --desktop-brightness: 1;
+  --taskbar-height: 56px;
+  --taskbar-opacity: 0.82;
+  --icon-scale: 1;
+}
+
+body {
+  font-family: var(--ui-font), system-ui, sans-serif;
+  font-size: calc(16px * var(--font-scale));
+}
+
+.desktop {
+  filter: saturate(var(--desktop-saturation)) brightness(var(--desktop-brightness));
+}
+
+.wallpaper-overlay {
+  opacity: var(--wallpaper-intensity);
+}
+
+.window {
+  background: color-mix(in srgb, var(--glass-heavy), transparent calc((1 - var(--window-opacity)) * 100%));
+  backdrop-filter: blur(var(--blur));
+}
+
+.desktop-icon { transform: scale(var(--icon-scale)); transform-origin: top left; }
+
+.taskbar {
+  height: var(--taskbar-height);
+  background: color-mix(in srgb, rgba(13, 18, 32, 1), transparent calc((1 - var(--taskbar-opacity)) * 100%));
+}
+
+.square-windows .window { border-radius: 0 !important; }
+.no-animations * { transition: none !important; animation: none !important; }
+.high-contrast { filter: contrast(1.25) saturate(0.9); }
+.reduce-motion * { scroll-behavior: auto !important; }
+
+body[data-theme="light"] {
+  --text: #0b1224;
+}
+body[data-theme="midnight"] {
+  --glass-heavy: rgba(5, 10, 30, 0.92);
+}
+body[data-theme="aqua"] {
+  --glass-heavy: rgba(8, 36, 46, 0.88);
+}
+
+.doc-editor-pro {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.doc-surface {
+  flex: 1;
+  min-height: 240px;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.8rem;
+  background: #f8fbff;
+  color: #111827;
+  overflow: auto;
+  user-select: text;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.5rem;
+}
+
+.setting-row {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.45rem;
+  background: rgba(255, 255, 255, 0.05);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.setting-row input[type="range"],
+.setting-row select {
+  width: 100%;
+}
+
+.setting-row small {
+  color: #b8cbef;
+}
