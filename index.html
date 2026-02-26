@@ -4,7 +4,305 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Win11 Pro Workspace</title>
-    <link rel="stylesheet" href="styles.css" />
+    <style>
+:root {
+  color-scheme: dark;
+  --glass: rgba(28, 36, 54, 0.55);
+  --glass-heavy: rgba(17, 23, 36, 0.88);
+  --line: rgba(255, 255, 255, 0.16);
+  --accent: #4ea1ff;
+  --text: #f2f6ff;
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.desktop {
+  position: relative;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 20%, #254878 0%, #111827 42%, #090f1e 100%);
+}
+
+.wallpaper-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(88, 126, 184, 0.18), transparent 32%, rgba(79, 48, 109, 0.2));
+  pointer-events: none;
+}
+
+.desktop-icons {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  display: grid;
+  gap: 0.6rem;
+  z-index: 2;
+}
+
+.desktop-icon {
+  width: 84px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #fff;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  border-radius: 0.6rem;
+  padding: 0.4rem;
+  cursor: pointer;
+}
+
+.desktop-icon:hover {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.desktop-icon .icon {
+  font-size: 1.6rem;
+}
+
+.window-layer {
+  position: absolute;
+  inset: 0;
+  padding-bottom: 4rem;
+}
+
+.window {
+  position: absolute;
+  width: min(74vw, 900px);
+  min-width: 320px;
+  height: min(68vh, 620px);
+  min-height: 260px;
+  background: var(--glass-heavy);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+
+.window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+}
+
+.window-title {
+  font-size: 0.9rem;
+}
+
+.window-controls {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.window-controls button {
+  border: none;
+  width: 2rem;
+  height: 1.7rem;
+  border-radius: 0.4rem;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+
+.window-controls button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.window-controls .close:hover {
+  background: #dc3f3f;
+}
+
+.window-content {
+  flex: 1;
+  overflow: auto;
+  padding: 0.8rem;
+}
+
+.window.focused {
+  border-color: rgba(120, 180, 255, 0.75);
+}
+
+.maximized {
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 56px) !important;
+  border-radius: 0;
+}
+
+.taskbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(13, 18, 32, 0.82);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(20px);
+  z-index: 30;
+}
+
+.taskbar-btn,
+.taskbar-item {
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border-radius: 0.55rem;
+  padding: 0.42rem 0.75rem;
+  cursor: pointer;
+}
+
+.taskbar-item.active {
+  border-color: rgba(130, 189, 255, 0.7);
+}
+
+.system-tray {
+  position: absolute;
+  right: 1rem;
+  font-size: 0.86rem;
+  color: #d2ddf5;
+}
+
+.start-menu {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(620px, 94vw);
+  background: rgba(20, 28, 44, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  backdrop-filter: blur(18px);
+  padding: 1rem;
+  z-index: 25;
+}
+
+.start-header {
+  margin-bottom: 0.8rem;
+}
+
+.pinned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+.pinned-grid button {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  text-align: left;
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+.doc-editor,
+.terminal,
+.browser-panel,
+.settings,
+.explorer,
+.calc {
+  user-select: text;
+}
+
+textarea,
+input,
+iframe {
+  width: 100%;
+}
+
+.doc-editor textarea,
+.terminal pre {
+  height: calc(100% - 2rem);
+  min-height: 220px;
+  background: #0f172a;
+  color: #d6ecff;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+}
+
+.browser-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem;
+}
+
+.browser-controls input {
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  padding: 0.45rem;
+}
+
+.browser-controls button,
+.settings button,
+.calc button {
+  background: #1f6feb;
+  color: white;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.browser-panel iframe {
+  margin-top: 0.6rem;
+  border-radius: 0.5rem;
+  height: calc(100% - 2.5rem);
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.45rem;
+}
+
+.calc-display {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.6rem;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-align: right;
+}
+
+body.focus-mode .desktop { filter: saturate(0.85) hue-rotate(-15deg); }
+
+    </style>
   </head>
   <body>
     <div id="desktop" class="desktop">
@@ -72,6 +370,272 @@
       </article>
     </template>
 
-    <script src="script.js"></script>
+    <script>
+const windowLayer = document.getElementById("windowLayer");
+const windowTemplate = document.getElementById("windowTemplate");
+const taskbarApps = document.getElementById("taskbarApps");
+const startMenu = document.getElementById("startMenu");
+const startButton = document.getElementById("startButton");
+const clock = document.getElementById("clock");
+
+const windows = new Map();
+let z = 20;
+
+const appDefinitions = {
+  explorer: {
+    title: "File Explorer",
+    content: `
+      <section class="explorer">
+        <h3>Quick Access</h3>
+        <ul>
+          <li>Desktop</li>
+          <li>Documents</li>
+          <li>Downloads</li>
+          <li>Pictures</li>
+          <li>Music</li>
+        </ul>
+      </section>`,
+  },
+  docs: {
+    title: "Docs",
+    content: `
+      <section class="doc-editor">
+        <p>Draft notes and save your ideas like a pro workspace.</p>
+        <textarea aria-label="Document editor">Project Brief\n\n- Objectives\n- Requirements\n- Timeline</textarea>
+      </section>`,
+  },
+  browser: {
+    title: "Browser",
+    content: `
+      <section class="browser-panel">
+        <div class="browser-controls">
+          <input type="text" value="https://example.com" aria-label="URL" />
+          <button>Go</button>
+        </div>
+        <iframe src="https://example.com" title="In-app browser"></iframe>
+      </section>`,
+    onMount: (root) => {
+      const input = root.querySelector("input");
+      const btn = root.querySelector("button");
+      const iframe = root.querySelector("iframe");
+      const navigate = () => {
+        let url = input.value.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          url = `https://${url}`;
+        }
+        iframe.src = url;
+      };
+      btn.addEventListener("click", navigate);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") navigate();
+      });
+    },
+  },
+  settings: {
+    title: "Settings",
+    content: `
+      <section class="settings">
+        <h3>System Settings</h3>
+        <p>Theme: Dark</p>
+        <p>Security: Windows Security Enabled</p>
+        <p>Performance Mode: Balanced</p>
+        <button id="focusMode">Toggle Focus Tint</button>
+      </section>`,
+    onMount: (root) => {
+      root.querySelector("#focusMode").addEventListener("click", () => {
+        document.body.classList.toggle("focus-mode");
+      });
+    },
+  },
+  terminal: {
+    title: "Terminal",
+    content: `
+      <section class="terminal">
+        <h3>PowerShell (Simulated)</h3>
+        <pre>PS C:\\Users\\Admin> systeminfo\nOS Name: Professional Workspace 11\nVersion: 23H2\nStatus: All systems online.</pre>
+      </section>`,
+  },
+  calculator: {
+    title: "Calculator",
+    content: `
+      <section class="calc">
+        <input class="calc-display" readonly value="0" />
+        <div class="calc-grid">
+          <button>C</button><button>(</button><button>)</button><button>/</button>
+          <button>7</button><button>8</button><button>9</button><button>*</button>
+          <button>4</button><button>5</button><button>6</button><button>-</button>
+          <button>1</button><button>2</button><button>3</button><button>+</button>
+          <button>0</button><button>.</button><button>=</button><button>%</button>
+        </div>
+      </section>`,
+    onMount: (root) => {
+      const display = root.querySelector(".calc-display");
+      root.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const val = btn.textContent;
+          if (val === "C") {
+            display.value = "0";
+          } else if (val === "=") {
+            try {
+              display.value = String(Function(`return (${display.value})`)());
+            } catch {
+              display.value = "Error";
+            }
+          } else {
+            display.value = display.value === "0" || display.value === "Error" ? val : display.value + val;
+          }
+        });
+      });
+    },
+  },
+};
+
+function updateClock() {
+  const now = new Date();
+  clock.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function focusWindow(win) {
+  z += 1;
+  win.style.zIndex = String(z);
+  document.querySelectorAll(".window").forEach((w) => w.classList.remove("focused"));
+  win.classList.add("focused");
+}
+
+function addTaskbarItem(appId, title, win) {
+  const btn = document.createElement("button");
+  btn.className = "taskbar-item active";
+  btn.textContent = title;
+  btn.addEventListener("click", () => {
+    if (win.classList.contains("hidden")) {
+      win.classList.remove("hidden");
+      focusWindow(win);
+      btn.classList.add("active");
+    } else {
+      win.classList.add("hidden");
+      btn.classList.remove("active");
+    }
+  });
+  taskbarApps.appendChild(btn);
+  windows.get(appId).taskBtn = btn;
+}
+
+function makeDraggable(win, header) {
+  let dragging = false;
+  let dx = 0;
+  let dy = 0;
+
+  header.addEventListener("mousedown", (e) => {
+    if (win.classList.contains("maximized")) return;
+    dragging = true;
+    dx = e.clientX - win.offsetLeft;
+    dy = e.clientY - win.offsetTop;
+    header.style.cursor = "grabbing";
+    focusWindow(win);
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    win.style.left = `${Math.max(0, e.clientX - dx)}px`;
+    win.style.top = `${Math.max(0, e.clientY - dy)}px`;
+  });
+
+  window.addEventListener("mouseup", () => {
+    dragging = false;
+    header.style.cursor = "grab";
+  });
+}
+
+function openApp(appId) {
+  if (windows.has(appId)) {
+    const existing = windows.get(appId).element;
+    existing.classList.remove("hidden");
+    focusWindow(existing);
+    windows.get(appId).taskBtn?.classList.add("active");
+    startMenu.classList.add("hidden");
+    return;
+  }
+
+  const app = appDefinitions[appId];
+  if (!app) return;
+
+  const win = windowTemplate.content.firstElementChild.cloneNode(true);
+  const title = win.querySelector(".window-title");
+  const content = win.querySelector(".window-content");
+  const header = win.querySelector(".window-header");
+
+  title.textContent = app.title;
+  content.innerHTML = app.content;
+
+  win.style.left = `${Math.floor(Math.random() * 240 + 120)}px`;
+  win.style.top = `${Math.floor(Math.random() * 140 + 70)}px`;
+
+  win.addEventListener("mousedown", () => focusWindow(win));
+  makeDraggable(win, header);
+
+  let restoreState = null;
+  win.querySelector(".minimize").addEventListener("click", () => {
+    win.classList.add("hidden");
+    windows.get(appId).taskBtn.classList.remove("active");
+  });
+
+  win.querySelector(".maximize").addEventListener("click", () => {
+    if (win.classList.contains("maximized")) {
+      win.classList.remove("maximized");
+      if (restoreState) {
+        win.style.top = restoreState.top;
+        win.style.left = restoreState.left;
+        win.style.width = restoreState.width;
+        win.style.height = restoreState.height;
+      }
+    } else {
+      restoreState = {
+        top: win.style.top,
+        left: win.style.left,
+        width: win.style.width,
+        height: win.style.height,
+      };
+      win.classList.add("maximized");
+    }
+    focusWindow(win);
+  });
+
+  win.querySelector(".close").addEventListener("click", () => {
+    windows.get(appId).taskBtn.remove();
+    windows.delete(appId);
+    win.remove();
+  });
+
+  windowLayer.appendChild(win);
+  focusWindow(win);
+  windows.set(appId, { element: win });
+  addTaskbarItem(appId, app.title, win);
+  app.onMount?.(content);
+  startMenu.classList.add("hidden");
+}
+
+startButton.addEventListener("click", () => {
+  startMenu.classList.toggle("hidden");
+});
+
+document.querySelectorAll("[data-app]").forEach((el) => {
+  el.addEventListener("dblclick", () => openApp(el.dataset.app));
+  el.addEventListener("click", (e) => {
+    if (el.closest(".pinned-grid")) openApp(el.dataset.app);
+    e.stopPropagation();
+  });
+});
+
+document.addEventListener("click", (e) => {
+  if (!startMenu.contains(e.target) && e.target !== startButton) {
+    startMenu.classList.add("hidden");
+  }
+});
+
+["explorer", "docs", "browser"].forEach(openApp);
+
+    </script>
   </body>
 </html>
