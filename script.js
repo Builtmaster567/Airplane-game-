@@ -4,84 +4,146 @@ const taskbarApps = document.getElementById("taskbarApps");
 const startMenu = document.getElementById("startMenu");
 const startButton = document.getElementById("startButton");
 const clock = document.getElementById("clock");
+const desktop = document.getElementById("desktop");
 
 const windows = new Map();
 let z = 20;
 
-const settingsState = JSON.parse(localStorage.getItem("workspaceSettings") || "{}");
+const settingsDefaults = {
+  theme: "dark",
+  accent: "#4ea1ff",
+  blur: 12,
+  windowOpacity: 88,
+  showSeconds: false,
+  iconScale: 100,
+  taskbarHeight: 56,
+  widgetClock: true,
+  widgetNotes: true,
+  widgetWeather: false,
+};
 
-const docsTools = [
-  ...["undo","redo","cut","copy","paste","selectAll","find","replace"].map((id) => ({ id, label: id })),
-  ...["bold","italic","underline","strikeThrough","subscript","superscript","justifyLeft","justifyCenter","justifyRight","justifyFull"].map((id) => ({ id, label: id })),
-  ...["insertUnorderedList","insertOrderedList","outdent","indent","removeFormat"].map((id) => ({ id, label: id })),
-  { id: "fontName", label: "Font" },
-  { id: "fontSize", label: "Font Size" },
-  { id: "foreColor", label: "Text Color" },
-  { id: "hiliteColor", label: "Highlight" },
-  { id: "createLink", label: "Link" },
-  { id: "unlink", label: "Unlink" },
-  { id: "insertImage", label: "Image" },
-  { id: "insertTable", label: "Table" },
-  { id: "insertDate", label: "Date" },
-  { id: "insertTime", label: "Time" },
-  { id: "insertCode", label: "Code" },
-  { id: "insertQuote", label: "Quote" },
-  { id: "insertChecklist", label: "Checklist" },
-  { id: "insertPageBreak", label: "Page Break" },
-  { id: "insertHorizontalRule", label: "Divider" },
-  { id: "toUpperCase", label: "UPPER" },
-  { id: "toLowerCase", label: "lower" },
-  { id: "capitalize", label: "Capitalize" },
-  { id: "wordCount", label: "Word Count" },
-  { id: "toggleReadonly", label: "Read Only" },
-  { id: "downloadHtml", label: "Export HTML" },
-  { id: "printDoc", label: "Print" },
-  { id: "clearDoc", label: "Clear" },
-  ...Array.from({ length: 75 }, (_, i) => ({ id: `snippet-${i + 1}`, label: `Snippet ${i + 1}` })),
-];
+const docDefaults = {
+  docs: [
+    {
+      id: crypto.randomUUID(),
+      title: "Welcome Document",
+      content: "<h1>Welcome</h1><p>This is your professional Docs workspace.</p>",
+      updatedAt: Date.now(),
+      versions: [],
+    },
+  ],
+  currentId: null,
+};
 
-const settingsCatalog = [
-  { key: "theme", label: "Theme", type: "select", options: ["dark", "light", "midnight", "aqua"], value: "dark" },
-  { key: "accentHue", label: "Accent Hue", type: "range", min: 180, max: 320, step: 1, value: 208 },
-  { key: "windowOpacity", label: "Window Opacity", type: "range", min: 50, max: 100, step: 1, value: 88 },
-  { key: "blur", label: "Glass Blur", type: "range", min: 0, max: 30, step: 1, value: 12 },
-  { key: "wallpaperIntensity", label: "Wallpaper Intensity", type: "range", min: 20, max: 100, step: 1, value: 100 },
-  { key: "animations", label: "Enable Animations", type: "toggle", value: true },
-  { key: "rounded", label: "Rounded Windows", type: "toggle", value: true },
-  { key: "showClockSeconds", label: "Show Clock Seconds", type: "toggle", value: false },
-  { key: "autoOpenApps", label: "Auto-open Core Apps", type: "toggle", value: true },
-  { key: "snapAssist", label: "Snap Assist", type: "toggle", value: true },
-  { key: "taskbarCenter", label: "Centered Taskbar", type: "toggle", value: true },
-  { key: "highContrast", label: "High Contrast", type: "toggle", value: false },
-  { key: "reduceMotion", label: "Reduce Motion", type: "toggle", value: false },
-  { key: "fontFamily", label: "UI Font", type: "select", options: ["Segoe UI", "Inter", "Roboto", "Arial"], value: "Segoe UI" },
-  { key: "fontScale", label: "UI Font Scale", type: "range", min: 90, max: 130, step: 1, value: 100 },
-  { key: "desktopSaturation", label: "Desktop Saturation", type: "range", min: 50, max: 140, step: 1, value: 100 },
-  { key: "desktopBrightness", label: "Desktop Brightness", type: "range", min: 60, max: 130, step: 1, value: 100 },
-  { key: "taskbarHeight", label: "Taskbar Height", type: "range", min: 46, max: 72, step: 1, value: 56 },
-  { key: "taskbarOpacity", label: "Taskbar Opacity", type: "range", min: 50, max: 100, step: 1, value: 82 },
-  { key: "iconScale", label: "Desktop Icon Scale", type: "range", min: 80, max: 140, step: 1, value: 100 },
-  ...Array.from({ length: 35 }, (_, i) => ({ key: `productivityToggle${i + 1}`, label: `Productivity Feature ${i + 1}`, type: "toggle", value: i % 2 === 0 })),
+const settingsState = loadState("workspaceSettings", settingsDefaults);
+const docsState = loadState("workspaceDocs", docDefaults);
+if (!docsState.currentId && docsState.docs[0]) docsState.currentId = docsState.docs[0].id;
+
+const sessionFiles = [];
+
+const docsToolbar = [
+  {
+    group: "File",
+    tools: [
+      { id: "newDoc", label: "New" },
+      { id: "saveDoc", label: "Save" },
+      { id: "deleteDoc", label: "Delete" },
+      { id: "exportHtml", label: "Export" },
+      { id: "printDoc", label: "Print" },
+      { id: "restoreVersion", label: "History" },
+    ],
+  },
+  {
+    group: "Edit",
+    tools: [
+      { id: "undo", label: "Undo" },
+      { id: "redo", label: "Redo" },
+      { id: "find", label: "Find" },
+      { id: "replace", label: "Replace" },
+      { id: "clearFormat", label: "Clear" },
+    ],
+  },
+  {
+    group: "Format",
+    tools: [
+      { id: "bold", label: "Bold" },
+      { id: "italic", label: "Italic" },
+      { id: "underline", label: "Underline" },
+      { id: "strikeThrough", label: "Strike" },
+      { id: "h1", label: "H1" },
+      { id: "h2", label: "H2" },
+      { id: "paragraph", label: "P" },
+      { id: "fontName", label: "Font" },
+      { id: "fontSize", label: "Size" },
+      { id: "foreColor", label: "Text" },
+      { id: "hiliteColor", label: "Highlight" },
+    ],
+  },
+  {
+    group: "Insert",
+    tools: [
+      { id: "link", label: "Link" },
+      { id: "image", label: "Image" },
+      { id: "table", label: "Table" },
+      { id: "checklist", label: "Checklist" },
+      { id: "quote", label: "Quote" },
+      { id: "divider", label: "Divider" },
+      { id: "date", label: "Date" },
+      { id: "time", label: "Time" },
+    ],
+  },
+  {
+    group: "Layout",
+    tools: [
+      { id: "alignLeft", label: "Left" },
+      { id: "alignCenter", label: "Center" },
+      { id: "alignRight", label: "Right" },
+      { id: "justify", label: "Justify" },
+      { id: "ul", label: "Bullets" },
+      { id: "ol", label: "Numbers" },
+      { id: "indent", label: "Indent" },
+      { id: "outdent", label: "Outdent" },
+    ],
+  },
 ];
 
 const appDefinitions = {
   explorer: {
-    title: "File Explorer Pro",
-    content: `<section class="explorer"><h3>File Explorer</h3><p>Professional workspace file system with quick access and recent docs.</p></section>`,
+    title: "Files & Media",
+    content: `
+      <section class="explorer-pro">
+        <div class="files-toolbar">
+          <label class="upload-btn">Upload Files<input id="fileInput" type="file" multiple hidden /></label>
+          <button id="clearFiles">Clear Session Files</button>
+        </div>
+        <div class="files-layout">
+          <aside>
+            <h4>My Files</h4>
+            <div id="fileList" class="file-list"></div>
+          </aside>
+          <main>
+            <h4>Preview</h4>
+            <div id="filePreview" class="file-preview">Select a file to preview it.</div>
+          </main>
+        </div>
+      </section>`,
+    onMount: (root) => mountExplorer(root),
   },
   docs: {
-    title: "Docs Studio Pro",
+    title: "Google Docs Style Studio",
     content: `
-      <section class="doc-editor-pro">
-        <div class="docs-top">
-          <input class="doc-title" value="Workspace Master Document" aria-label="Document title" />
-          <span class="doc-stat" id="docStats">Words: 0 | Chars: 0</span>
+      <section class="docs-pro">
+        <div class="docs-home" id="docsHome"></div>
+        <div class="docs-editor hidden" id="docsEditor">
+          <div class="docs-header">
+            <button id="backToHome">← Home</button>
+            <input id="docTitle" class="doc-title" />
+            <button id="saveDoc">Save</button>
+            <span id="docMeta" class="doc-meta"></span>
+          </div>
+          <div id="toolGroups" class="tool-groups"></div>
+          <div id="docSurface" class="doc-surface" contenteditable="true"></div>
         </div>
-        <div class="docs-toolbar-wrap">
-          <input id="toolSearch" placeholder="Search 100+ Google-Docs style tools..." aria-label="Search tools" />
-          <div id="docsTools" class="docs-tools"></div>
-        </div>
-        <div id="docSurface" class="doc-surface" contenteditable="true" spellcheck="true">Welcome to Docs Studio Pro.<br><br>Everything here is editable with 100+ tools, fonts, and advanced writing controls.</div>
       </section>`,
     onMount: (root) => mountDocs(root),
   },
@@ -109,125 +171,154 @@ const appDefinitions = {
     },
   },
   settings: {
-    title: "Settings Center (50+ Working)",
-    content: `<section class="settings"><h3>System Settings</h3><div id="settingsGrid" class="settings-grid"></div></section>`,
+    title: "Settings Center",
+    content: `<section class="settings"><h3>Real System Settings</h3><div id="settingsGrid" class="settings-grid"></div></section>`,
     onMount: (root) => mountSettings(root),
   },
   terminal: {
-    title: "Terminal Ultra",
-    content: `<section class="terminal"><h3>PowerShell</h3><pre>PS C:\\Users\\Admin> systeminfo\nWorkspace: Optimal\nApps: Running</pre></section>`,
+    title: "Terminal",
+    content: `<section class="terminal"><h3>PowerShell</h3><pre>PS C:\\Users\\Admin> status\nDesktop online\nDocs synced locally\nFiles viewer ready</pre></section>`,
   },
   calculator: {
-    title: "Calculator X Advanced",
-    content: `
-      <section class="calc advanced-calc">
-        <input class="calc-display" readonly value="0" />
-        <div class="calc-row"><button data-action="clear">C</button><button data-action="back">⌫</button><button data-action="ms">MS</button><button data-action="mr">MR</button><button data-action="ans">Ans</button></div>
-        <div class="calc-row"><button data-insert="sin(">sin</button><button data-insert="cos(">cos</button><button data-insert="tan(">tan</button><button data-insert="sqrt(">√</button><button data-insert="log10(">log</button></div>
-        <div class="calc-grid five">
-          <button data-insert="7">7</button><button data-insert="8">8</button><button data-insert="9">9</button><button data-insert="/">÷</button><button data-action="deg">DEG</button>
-          <button data-insert="4">4</button><button data-insert="5">5</button><button data-insert="6">6</button><button data-insert="*">×</button><button data-action="rad">RAD</button>
-          <button data-insert="1">1</button><button data-insert="2">2</button><button data-insert="3">3</button><button data-insert="-">−</button><button data-action="hex">HEX</button>
-          <button data-insert="0">0</button><button data-insert=".">.</button><button data-insert="(">(</button><button data-insert=")">)</button><button data-action="bin">BIN</button>
-          <button data-action="history">HIST</button><button data-action="copy">COPY</button><button data-insert="+">+</button><button data-action="equals">=</button><button data-action="clearhist">CLR-H</button>
-        </div>
-        <div class="calc-history" id="calcHistory"></div>
-      </section>`,
-    onMount: (root) => mountCalculator(root),
+    title: "Calculator X",
+    content: `<section class="calc"><input class="calc-display" readonly value="0" /><div class="calc-grid"><button>C</button><button>(</button><button>)</button><button>/</button><button>7</button><button>8</button><button>9</button><button>*</button><button>4</button><button>5</button><button>6</button><button>-</button><button>1</button><button>2</button><button>3</button><button>+</button><button>0</button><button>.</button><button>=</button><button>%</button></div></section>`,
+    onMount: (root) => {
+      const d = root.querySelector(".calc-display");
+      root.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+        const v = b.textContent;
+        if (v === "C") d.value = "0";
+        else if (v === "=") {
+          try { d.value = String(Function(`return (${d.value})`)()); } catch { d.value = "Error"; }
+        } else d.value = d.value === "0" || d.value === "Error" ? v : d.value + v;
+      }));
+    },
   },
 };
 
-function getSetting(key) {
-  const def = settingsCatalog.find((s) => s.key === key);
-  return settingsState[key] ?? def?.value;
-}
-
-function applySetting(key, value) {
-  settingsState[key] = value;
-  localStorage.setItem("workspaceSettings", JSON.stringify(settingsState));
-  const bodyStyle = document.body.style;
-
-  if (key === "theme") {
-    document.body.dataset.theme = value;
-  } else if (key === "accentHue") {
-    bodyStyle.setProperty("--accent-h", value);
-  } else if (key === "windowOpacity") {
-    bodyStyle.setProperty("--window-opacity", Number(value) / 100);
-  } else if (key === "blur") {
-    bodyStyle.setProperty("--blur", `${value}px`);
-  } else if (key === "wallpaperIntensity") {
-    bodyStyle.setProperty("--wallpaper-intensity", Number(value) / 100);
-  } else if (key === "showClockSeconds") {
-    updateClock();
-  } else if (key === "taskbarCenter") {
-    document.querySelector(".taskbar").style.justifyContent = value ? "center" : "flex-start";
-  } else if (key === "highContrast") {
-    document.body.classList.toggle("high-contrast", !!value);
-  } else if (key === "reduceMotion") {
-    document.body.classList.toggle("reduce-motion", !!value);
-  } else if (key === "fontFamily") {
-    bodyStyle.setProperty("--ui-font", value);
-  } else if (key === "fontScale") {
-    bodyStyle.setProperty("--font-scale", Number(value) / 100);
-  } else if (key === "desktopSaturation") {
-    bodyStyle.setProperty("--desktop-saturation", Number(value) / 100);
-  } else if (key === "desktopBrightness") {
-    bodyStyle.setProperty("--desktop-brightness", Number(value) / 100);
-  } else if (key === "taskbarHeight") {
-    bodyStyle.setProperty("--taskbar-height", `${value}px`);
-  } else if (key === "taskbarOpacity") {
-    bodyStyle.setProperty("--taskbar-opacity", Number(value) / 100);
-  } else if (key === "iconScale") {
-    bodyStyle.setProperty("--icon-scale", Number(value) / 100);
-  } else if (key === "rounded") {
-    document.body.classList.toggle("square-windows", !value);
-  } else if (key === "animations") {
-    document.body.classList.toggle("no-animations", !value);
+function loadState(key, fallback) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "null");
+    return parsed ? { ...fallback, ...parsed } : structuredClone(fallback);
+  } catch {
+    return structuredClone(fallback);
   }
 }
 
-function initSettings() {
-  settingsCatalog.forEach((s) => applySetting(s.key, getSetting(s.key)));
+function saveState(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getCurrentDoc() {
+  return docsState.docs.find((d) => d.id === docsState.currentId) || docsState.docs[0];
+}
+
+function updateClock() {
+  const now = new Date();
+  clock.textContent = now.toLocaleTimeString([], settingsState.showSeconds ? { hour: "2-digit", minute: "2-digit", second: "2-digit" } : { hour: "2-digit", minute: "2-digit" });
+}
+setInterval(updateClock, 1000);
+
+function applySettings() {
+  document.body.dataset.theme = settingsState.theme;
+  document.body.style.setProperty("--accent", settingsState.accent);
+  document.body.style.setProperty("--blur", `${settingsState.blur}px`);
+  document.body.style.setProperty("--window-opacity", settingsState.windowOpacity / 100);
+  document.body.style.setProperty("--icon-scale", settingsState.iconScale / 100);
+  document.body.style.setProperty("--taskbar-height", `${settingsState.taskbarHeight}px`);
+  renderWidgets();
+  updateClock();
+}
+
+function renderWidgets() {
+  let panel = document.getElementById("widgetPanel");
+  if (!panel) {
+    panel = document.createElement("aside");
+    panel.id = "widgetPanel";
+    panel.className = "widget-panel";
+    desktop.appendChild(panel);
+  }
+
+  const cards = [];
+  if (settingsState.widgetClock) cards.push(`<div class="widget"><h4>Clock</h4><p>${new Date().toLocaleString()}</p></div>`);
+  if (settingsState.widgetWeather) cards.push(`<div class="widget"><h4>Weather</h4><p>Cloudy 22°C • Workspace City</p></div>`);
+  if (settingsState.widgetNotes) cards.push(`<div class="widget"><h4>Quick Notes</h4><textarea id="quickNote">${localStorage.getItem("quickNote") || "Write quick notes..."}</textarea></div>`);
+  panel.innerHTML = cards.join("");
+
+  const note = panel.querySelector("#quickNote");
+  if (note) note.addEventListener("input", () => localStorage.setItem("quickNote", note.value));
 }
 
 function mountSettings(root) {
+  const options = [
+    { key: "theme", label: "Theme", type: "select", options: ["dark", "light", "aqua", "midnight"] },
+    { key: "accent", label: "Accent Color", type: "color" },
+    { key: "blur", label: "Window Blur", type: "range", min: 0, max: 24 },
+    { key: "windowOpacity", label: "Window Opacity", type: "range", min: 50, max: 100 },
+    { key: "showSeconds", label: "Clock Seconds", type: "checkbox" },
+    { key: "iconScale", label: "Desktop Icon Scale", type: "range", min: 80, max: 140 },
+    { key: "taskbarHeight", label: "Taskbar Height", type: "range", min: 46, max: 74 },
+    { key: "widgetClock", label: "Widget: Clock", type: "checkbox" },
+    { key: "widgetNotes", label: "Widget: Notes", type: "checkbox" },
+    { key: "widgetWeather", label: "Widget: Weather", type: "checkbox" },
+  ];
+
+  const advanced = Array.from({ length: 45 }, (_, i) => ({ key: `pref${i + 1}`, label: `System Preference ${i + 1}`, type: "checkbox" }));
+  const all = [...options, ...advanced];
+
   const grid = root.querySelector("#settingsGrid");
-  settingsCatalog.forEach((setting) => {
+  all.forEach((item) => {
     const row = document.createElement("label");
     row.className = "setting-row";
-    row.innerHTML = `<span>${setting.label}</span>`;
+    row.innerHTML = `<span>${item.label}</span>`;
     let input;
-    const value = getSetting(setting.key);
 
-    if (setting.type === "toggle") {
-      input = document.createElement("input");
-      input.type = "checkbox";
-      input.checked = !!value;
-      input.addEventListener("change", () => applySetting(setting.key, input.checked));
-    } else if (setting.type === "range") {
-      input = document.createElement("input");
-      input.type = "range";
-      input.min = setting.min;
-      input.max = setting.max;
-      input.step = setting.step;
-      input.value = value;
-      const out = document.createElement("small");
-      out.textContent = String(value);
-      input.addEventListener("input", () => {
-        out.textContent = input.value;
-        applySetting(setting.key, Number(input.value));
-      });
-      row.appendChild(out);
-    } else {
+    if (item.type === "select") {
       input = document.createElement("select");
-      setting.options.forEach((opt) => {
+      item.options.forEach((opt) => {
         const o = document.createElement("option");
         o.value = opt;
         o.textContent = opt;
         input.appendChild(o);
       });
-      input.value = value;
-      input.addEventListener("change", () => applySetting(setting.key, input.value));
+      input.value = settingsState[item.key] ?? item.options[0];
+      input.addEventListener("change", () => {
+        settingsState[item.key] = input.value;
+        saveState("workspaceSettings", settingsState);
+        applySettings();
+      });
+    } else if (item.type === "color") {
+      input = document.createElement("input");
+      input.type = "color";
+      input.value = settingsState[item.key] || "#4ea1ff";
+      input.addEventListener("input", () => {
+        settingsState[item.key] = input.value;
+        saveState("workspaceSettings", settingsState);
+        applySettings();
+      });
+    } else if (item.type === "range") {
+      input = document.createElement("input");
+      input.type = "range";
+      input.min = item.min;
+      input.max = item.max;
+      input.value = settingsState[item.key] ?? item.min;
+      const val = document.createElement("small");
+      val.textContent = input.value;
+      input.addEventListener("input", () => {
+        val.textContent = input.value;
+        settingsState[item.key] = Number(input.value);
+        saveState("workspaceSettings", settingsState);
+        applySettings();
+      });
+      row.appendChild(val);
+    } else {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = !!settingsState[item.key];
+      input.addEventListener("change", () => {
+        settingsState[item.key] = input.checked;
+        saveState("workspaceSettings", settingsState);
+        applySettings();
+      });
     }
 
     row.appendChild(input);
@@ -235,203 +326,226 @@ function mountSettings(root) {
   });
 }
 
-function mountDocs(root) {
-  const toolsHost = root.querySelector("#docsTools");
-  const search = root.querySelector("#toolSearch");
-  const surface = root.querySelector("#docSurface");
-  const stats = root.querySelector("#docStats");
-  let readOnly = false;
+function mountExplorer(root) {
+  const input = root.querySelector("#fileInput");
+  const list = root.querySelector("#fileList");
+  const preview = root.querySelector("#filePreview");
+  const clear = root.querySelector("#clearFiles");
 
-  const updateStats = () => {
-    const text = surface.innerText.trim();
-    const words = text ? text.split(/\s+/).length : 0;
-    stats.textContent = `Words: ${words} | Chars: ${text.length}`;
-  };
-
-  const wrapSelection = (before, after = before) => {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const text = range.toString() || "text";
-    range.deleteContents();
-    range.insertNode(document.createTextNode(`${before}${text}${after}`));
-  };
-
-  const executeTool = (toolId) => {
-    surface.focus();
-    if (toolId.startsWith("snippet-")) {
-      const n = toolId.split("-")[1];
-      document.execCommand("insertText", false, `\n[Snippet ${n}] Professional content block\n`);
+  const renderList = () => {
+    list.innerHTML = "";
+    if (!sessionFiles.length) {
+      list.innerHTML = "<p>No uploaded files yet.</p>";
       return;
     }
-
-    const commandMap = {
-      bold: ["bold"], italic: ["italic"], underline: ["underline"], strikeThrough: ["strikeThrough"],
-      subscript: ["subscript"], superscript: ["superscript"], justifyLeft: ["justifyLeft"],
-      justifyCenter: ["justifyCenter"], justifyRight: ["justifyRight"], justifyFull: ["justifyFull"],
-      insertUnorderedList: ["insertUnorderedList"], insertOrderedList: ["insertOrderedList"],
-      outdent: ["outdent"], indent: ["indent"], removeFormat: ["removeFormat"],
-      undo: ["undo"], redo: ["redo"], cut: ["cut"], copy: ["copy"], paste: ["paste"],
-      selectAll: ["selectAll"], unlink: ["unlink"], insertHorizontalRule: ["insertHorizontalRule"],
-    };
-
-    if (commandMap[toolId]) {
-      document.execCommand(commandMap[toolId][0], false, commandMap[toolId][1] || null);
-    } else if (toolId === "fontName") {
-      const font = prompt("Font name", "Georgia") || "Georgia";
-      document.execCommand("fontName", false, font);
-    } else if (toolId === "fontSize") {
-      const size = prompt("Font size (1-7)", "4") || "4";
-      document.execCommand("fontSize", false, size);
-    } else if (toolId === "foreColor") {
-      const color = prompt("Text color", "#4ea1ff") || "#4ea1ff";
-      document.execCommand("foreColor", false, color);
-    } else if (toolId === "hiliteColor") {
-      const color = prompt("Highlight color", "#ffe98a") || "#ffe98a";
-      document.execCommand("hiliteColor", false, color);
-    } else if (toolId === "createLink") {
-      const url = prompt("Enter URL", "https://example.com");
-      if (url) document.execCommand("createLink", false, url);
-    } else if (toolId === "insertImage") {
-      const url = prompt("Image URL", "https://picsum.photos/200");
-      if (url) document.execCommand("insertImage", false, url);
-    } else if (toolId === "insertTable") {
-      document.execCommand("insertHTML", false, `<table border="1" style="width:100%;border-collapse:collapse"><tr><th>Header</th><th>Header</th></tr><tr><td>Cell</td><td>Cell</td></tr></table>`);
-    } else if (toolId === "insertDate") {
-      document.execCommand("insertText", false, new Date().toLocaleDateString());
-    } else if (toolId === "insertTime") {
-      document.execCommand("insertText", false, new Date().toLocaleTimeString());
-    } else if (toolId === "insertCode") {
-      wrapSelection("`", "`");
-    } else if (toolId === "insertQuote") {
-      wrapSelection("\“", "\”");
-    } else if (toolId === "insertChecklist") {
-      document.execCommand("insertHTML", false, `<ul><li>☐ Item 1</li><li>☐ Item 2</li></ul>`);
-    } else if (toolId === "insertPageBreak") {
-      document.execCommand("insertHTML", false, `<hr style="border:0;border-top:2px dashed #6f8fbf;margin:18px 0"/>`);
-    } else if (toolId === "toUpperCase") {
-      wrapSelection("", "");
-      document.execCommand("insertText", false, (window.getSelection().toString() || surface.innerText).toUpperCase());
-    } else if (toolId === "toLowerCase") {
-      document.execCommand("insertText", false, (window.getSelection().toString() || surface.innerText).toLowerCase());
-    } else if (toolId === "capitalize") {
-      const t = (window.getSelection().toString() || surface.innerText).replace(/\b\w/g, (c) => c.toUpperCase());
-      document.execCommand("insertText", false, t);
-    } else if (toolId === "wordCount") {
-      alert(stats.textContent);
-    } else if (toolId === "toggleReadonly") {
-      readOnly = !readOnly;
-      surface.contentEditable = String(!readOnly);
-    } else if (toolId === "downloadHtml") {
-      const blob = new Blob([surface.innerHTML], { type: "text/html" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "document.html";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } else if (toolId === "printDoc") {
-      const w = window.open("", "_blank");
-      w.document.write(`<html><body>${surface.innerHTML}</body></html>`);
-      w.document.close();
-      w.print();
-    } else if (toolId === "clearDoc") {
-      surface.innerHTML = "";
-    }
-    updateStats();
-  };
-
-  const renderTools = (query = "") => {
-    const q = query.trim().toLowerCase();
-    toolsHost.innerHTML = "";
-    docsTools
-      .filter((t) => t.label.toLowerCase().includes(q) || t.id.toLowerCase().includes(q))
-      .forEach((tool) => {
-        const btn = document.createElement("button");
-        btn.className = "tool-chip";
-        btn.textContent = tool.label;
-        btn.addEventListener("click", () => executeTool(tool.id));
-        toolsHost.appendChild(btn);
-      });
-  };
-
-  search.addEventListener("input", () => renderTools(search.value));
-  surface.addEventListener("input", updateStats);
-  renderTools();
-  updateStats();
-}
-
-function mountCalculator(root) {
-  const display = root.querySelector(".calc-display");
-  const historyHost = root.querySelector("#calcHistory");
-  let memory = 0;
-  let ans = 0;
-  let deg = true;
-  const history = [];
-
-  const ctx = {
-    PI: Math.PI,
-    E: Math.E,
-    sin: (x) => Math.sin(deg ? (x * Math.PI) / 180 : x),
-    cos: (x) => Math.cos(deg ? (x * Math.PI) / 180 : x),
-    tan: (x) => Math.tan(deg ? (x * Math.PI) / 180 : x),
-    sqrt: Math.sqrt,
-    log10: Math.log10,
-  };
-
-  const renderHistory = () => {
-    historyHost.innerHTML = history.slice(-10).map((h) => `<div>${h}</div>`).join("") || "<div>No history</div>";
-  };
-
-  const evalExpr = () => {
-    try {
-      const expr = display.value.replace(/÷/g, "/").replace(/×/g, "*").replace(/−/g, "-");
-      const fn = Function(...Object.keys(ctx), `return (${expr})`);
-      const result = fn(...Object.values(ctx));
-      if (!Number.isFinite(result)) throw new Error();
-      ans = result;
-      display.value = String(result);
-      history.push(`${expr} = ${result}`);
-    } catch {
-      display.value = "Error";
-    }
-    renderHistory();
-  };
-
-  root.querySelectorAll("button").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const ins = btn.dataset.insert;
-      const action = btn.dataset.action;
-      if (ins) {
-        display.value = display.value === "0" || display.value === "Error" ? ins : display.value + ins;
-        return;
-      }
-      if (action === "clear") display.value = "0";
-      else if (action === "back") display.value = display.value.length > 1 ? display.value.slice(0, -1) : "0";
-      else if (action === "ms") memory = Number(display.value) || memory;
-      else if (action === "mr") display.value = String(memory);
-      else if (action === "ans") display.value += String(ans);
-      else if (action === "deg") deg = true;
-      else if (action === "rad") deg = false;
-      else if (action === "hex") display.value = Math.trunc(Number(display.value) || 0).toString(16).toUpperCase();
-      else if (action === "bin") display.value = Math.trunc(Number(display.value) || 0).toString(2);
-      else if (action === "copy") {
-        try { await navigator.clipboard.writeText(display.value); history.push(`Copied ${display.value}`); } catch { history.push("Clipboard unavailable"); }
-      } else if (action === "history") renderHistory();
-      else if (action === "clearhist") history.length = 0;
-      else if (action === "equals") evalExpr();
-      renderHistory();
+    sessionFiles.forEach((file, idx) => {
+      const b = document.createElement("button");
+      b.className = "file-item";
+      b.textContent = `${file.name} (${Math.ceil(file.size / 1024)} KB)`;
+      b.addEventListener("click", () => previewFile(idx));
+      list.appendChild(b);
     });
+  };
+
+  const previewFile = (idx) => {
+    const file = sessionFiles[idx];
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith("image/")) preview.innerHTML = `<img src="${url}" alt="${file.name}" />`;
+    else if (file.type === "application/pdf") preview.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="420" />`;
+    else if (file.type.startsWith("video/")) preview.innerHTML = `<video src="${url}" controls width="100%"></video>`;
+    else if (file.type.startsWith("audio/")) preview.innerHTML = `<audio src="${url}" controls></audio>`;
+    else if (file.type.startsWith("text/")) file.text().then((t) => { preview.textContent = t.slice(0, 8000); });
+    else preview.innerHTML = `<p>Cannot preview this file type here, but file is uploaded: ${file.name}</p>`;
+  };
+
+  input.addEventListener("change", () => {
+    sessionFiles.push(...Array.from(input.files));
+    renderList();
   });
 
-  renderHistory();
+  clear.addEventListener("click", () => {
+    sessionFiles.length = 0;
+    renderList();
+    preview.textContent = "Select a file to preview it.";
+  });
+
+  renderList();
 }
 
-function updateClock() {
-  const now = new Date();
-  const withSeconds = !!getSetting("showClockSeconds");
-  clock.textContent = now.toLocaleTimeString([], withSeconds ? { hour: "2-digit", minute: "2-digit", second: "2-digit" } : { hour: "2-digit", minute: "2-digit" });
+function mountDocs(root) {
+  const home = root.querySelector("#docsHome");
+  const editor = root.querySelector("#docsEditor");
+  const surface = root.querySelector("#docSurface");
+  const titleInput = root.querySelector("#docTitle");
+  const meta = root.querySelector("#docMeta");
+  const groups = root.querySelector("#toolGroups");
+  const saveBtn = root.querySelector("#saveDoc");
+  const backBtn = root.querySelector("#backToHome");
+
+  const persistCurrent = () => {
+    const current = getCurrentDoc();
+    if (!current) return;
+    current.title = titleInput.value.trim() || "Untitled";
+    current.content = surface.innerHTML;
+    current.updatedAt = Date.now();
+    current.versions = current.versions || [];
+    current.versions.push({ content: current.content, title: current.title, at: current.updatedAt });
+    if (current.versions.length > 20) current.versions.shift();
+    saveState("workspaceDocs", docsState);
+    renderHome();
+    updateMeta();
+  };
+
+  const openDoc = (id) => {
+    docsState.currentId = id;
+    saveState("workspaceDocs", docsState);
+    const doc = getCurrentDoc();
+    titleInput.value = doc.title;
+    surface.innerHTML = doc.content;
+    home.classList.add("hidden");
+    editor.classList.remove("hidden");
+    updateMeta();
+  };
+
+  const renderHome = () => {
+    home.innerHTML = `
+      <div class="docs-home-header">
+        <h3>Documents Home</h3>
+        <button id="createDoc">+ New Document</button>
+      </div>
+      <div class="docs-cards">
+        ${docsState.docs
+          .map((d) => `<article class="doc-card"><h4>${d.title}</h4><p>Updated ${new Date(d.updatedAt).toLocaleString()}</p><div><button data-open="${d.id}">Open</button><button data-delete="${d.id}">Delete</button></div></article>`)
+          .join("")}
+      </div>`;
+
+    home.querySelector("#createDoc").addEventListener("click", () => {
+      const doc = { id: crypto.randomUUID(), title: `Untitled ${docsState.docs.length + 1}`, content: "<p>Start typing...</p>", updatedAt: Date.now(), versions: [] };
+      docsState.docs.unshift(doc);
+      docsState.currentId = doc.id;
+      saveState("workspaceDocs", docsState);
+      renderHome();
+      openDoc(doc.id);
+    });
+
+    home.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.open)));
+    home.querySelectorAll("[data-delete]").forEach((b) => b.addEventListener("click", () => {
+      docsState.docs = docsState.docs.filter((d) => d.id !== b.dataset.delete);
+      if (!docsState.docs.length) {
+        docsState.docs.push({ id: crypto.randomUUID(), title: "New Document", content: "<p>Start typing...</p>", updatedAt: Date.now(), versions: [] });
+      }
+      docsState.currentId = docsState.docs[0].id;
+      saveState("workspaceDocs", docsState);
+      renderHome();
+    }));
+  };
+
+  const updateMeta = () => {
+    const text = surface.innerText || "";
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    meta.textContent = `Words: ${words} | Chars: ${text.length}`;
+  };
+
+  const exec = (id) => {
+    surface.focus();
+    const command = {
+      undo: () => document.execCommand("undo"), redo: () => document.execCommand("redo"),
+      find: () => { const q = prompt("Find text"); if (q) window.find(q); },
+      replace: () => {
+        const from = prompt("Find");
+        const to = prompt("Replace with");
+        if (from) surface.innerHTML = surface.innerHTML.split(from).join(to || "");
+      },
+      clearFormat: () => document.execCommand("removeFormat"),
+      bold: () => document.execCommand("bold"), italic: () => document.execCommand("italic"),
+      underline: () => document.execCommand("underline"), strikeThrough: () => document.execCommand("strikeThrough"),
+      h1: () => document.execCommand("formatBlock", false, "h1"),
+      h2: () => document.execCommand("formatBlock", false, "h2"),
+      paragraph: () => document.execCommand("formatBlock", false, "p"),
+      fontName: () => document.execCommand("fontName", false, prompt("Font", "Arial") || "Arial"),
+      fontSize: () => document.execCommand("fontSize", false, prompt("Size (1-7)", "4") || "4"),
+      foreColor: () => document.execCommand("foreColor", false, prompt("Text color", "#000000") || "#000000"),
+      hiliteColor: () => document.execCommand("hiliteColor", false, prompt("Highlight", "#fff59d") || "#fff59d"),
+      link: () => { const u = prompt("URL", "https://"); if (u) document.execCommand("createLink", false, u); },
+      image: () => { const u = prompt("Image URL"); if (u) document.execCommand("insertImage", false, u); },
+      table: () => document.execCommand("insertHTML", false, "<table border='1' style='width:100%;border-collapse:collapse'><tr><th>Header</th><th>Header</th></tr><tr><td>Cell</td><td>Cell</td></tr></table>"),
+      checklist: () => document.execCommand("insertHTML", false, "<ul><li>☐ Task 1</li><li>☐ Task 2</li></ul>"),
+      quote: () => document.execCommand("formatBlock", false, "blockquote"),
+      divider: () => document.execCommand("insertHorizontalRule"),
+      date: () => document.execCommand("insertText", false, new Date().toLocaleDateString()),
+      time: () => document.execCommand("insertText", false, new Date().toLocaleTimeString()),
+      alignLeft: () => document.execCommand("justifyLeft"),
+      alignCenter: () => document.execCommand("justifyCenter"),
+      alignRight: () => document.execCommand("justifyRight"),
+      justify: () => document.execCommand("justifyFull"),
+      ul: () => document.execCommand("insertUnorderedList"),
+      ol: () => document.execCommand("insertOrderedList"),
+      indent: () => document.execCommand("indent"),
+      outdent: () => document.execCommand("outdent"),
+      newDoc: () => home.querySelector("#createDoc")?.click(),
+      saveDoc: persistCurrent,
+      deleteDoc: () => {
+        const current = getCurrentDoc();
+        docsState.docs = docsState.docs.filter((d) => d.id !== current.id);
+        if (!docsState.docs.length) docsState.docs.push({ id: crypto.randomUUID(), title: "New Document", content: "<p>Start typing...</p>", updatedAt: Date.now(), versions: [] });
+        docsState.currentId = docsState.docs[0].id;
+        saveState("workspaceDocs", docsState);
+        renderHome();
+        home.classList.remove("hidden");
+        editor.classList.add("hidden");
+      },
+      exportHtml: () => {
+        const blob = new Blob([surface.innerHTML], { type: "text/html" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${titleInput.value || "document"}.html`;
+        a.click();
+      },
+      printDoc: () => {
+        const w = window.open("", "_blank");
+        w.document.write(`<html><body>${surface.innerHTML}</body></html>`);
+        w.document.close();
+        w.print();
+      },
+      restoreVersion: () => {
+        const current = getCurrentDoc();
+        const versions = (current.versions || []).slice(-10).reverse();
+        if (!versions.length) return alert("No version history yet.");
+        const pick = prompt(`Choose version 1-${versions.length}`);
+        const idx = Number(pick) - 1;
+        if (versions[idx]) {
+          current.content = versions[idx].content;
+          current.title = versions[idx].title;
+          titleInput.value = current.title;
+          surface.innerHTML = current.content;
+          saveState("workspaceDocs", docsState);
+          updateMeta();
+        }
+      },
+    };
+
+    command[id]?.();
+    updateMeta();
+  };
+
+  groups.innerHTML = docsToolbar
+    .map((g) => `<div class="tool-group"><h4>${g.group}</h4><div>${g.tools.map((t) => `<button data-tool="${t.id}">${t.label}</button>`).join("")}</div></div>`)
+    .join("");
+
+  groups.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => exec(b.dataset.tool)));
+  saveBtn.addEventListener("click", persistCurrent);
+  titleInput.addEventListener("input", updateMeta);
+  surface.addEventListener("input", updateMeta);
+  backBtn.addEventListener("click", () => {
+    persistCurrent();
+    home.classList.remove("hidden");
+    editor.classList.add("hidden");
+  });
+
+  renderHome();
+  home.classList.remove("hidden");
+  editor.classList.add("hidden");
 }
-setInterval(updateClock, 1000);
 
 function focusWindow(win) {
   z += 1;
@@ -546,7 +660,6 @@ function openApp(appId) {
 }
 
 startButton.addEventListener("click", () => startMenu.classList.toggle("hidden"));
-
 document.querySelectorAll("[data-app]").forEach((el) => {
   el.addEventListener("dblclick", () => openApp(el.dataset.app));
   el.addEventListener("click", (e) => {
@@ -555,10 +668,6 @@ document.querySelectorAll("[data-app]").forEach((el) => {
   });
 });
 
-document.addEventListener("click", (e) => {
-  if (!startMenu.contains(e.target) && e.target !== startButton) startMenu.classList.add("hidden");
-});
-
-initSettings();
+applySettings();
 updateClock();
-if (getSetting("autoOpenApps")) ["explorer", "docs", "browser"].forEach(openApp);
+["explorer", "docs", "browser"].forEach(openApp);
