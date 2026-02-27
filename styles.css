@@ -101,3 +101,16 @@ body.files-small-preview .file-preview embed { height: 280px; }
 body.files-dense .file-item { padding: .2rem .35rem; font-size: .85em; }
 body.edge-glow .window.focused { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), white 20%), 0 20px calc(var(--window-shadow) * 1px) rgba(0,0,0,.45); }
 body.title-uppercase .window-title { text-transform: uppercase; letter-spacing: .04em; }
+
+#customDesktopApps { display: grid; gap: .55rem; }
+.launcher-empty { opacity: .8; margin: .25rem 0 0; }
+.apps-studio { display: grid; gap: .7rem; }
+.apps-builder { display: grid; gap: .45rem; border: 1px solid var(--line); border-radius: .6rem; background: rgba(255,255,255,.05); padding: .6rem; }
+.apps-builder textarea { min-height: 140px; border-radius: .4rem; border: 1px solid var(--line); background: rgba(255,255,255,.08); color: #fff; padding: .5rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.apps-builder input { border: 1px solid var(--line); border-radius: .4rem; background: rgba(255,255,255,.08); color: #fff; padding: .45rem; }
+.apps-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.apps-actions button { border: 1px solid var(--line); background: rgba(30,84,160,.45); color: #fff; border-radius: .4rem; padding: .45rem .6rem; cursor: pointer; }
+.installed-apps { display: grid; gap: .4rem; }
+.installed-app { border: 1px solid var(--line); border-radius: .5rem; background: rgba(255,255,255,.05); padding: .45rem; display: flex; justify-content: space-between; align-items: center; gap: .45rem; }
+.installed-app button { margin-left: .35rem; }
+.custom-app-host iframe { width: 100%; height: 100%; min-height: 360px; border: 1px solid var(--line); border-radius: .5rem; background: #111827; }

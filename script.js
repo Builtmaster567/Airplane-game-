@@ -64,6 +64,7 @@ const settingsCatalog = [
 
 const settingsDefaults = Object.fromEntries(settingsCatalog.map((s) => [s.key, s.default]));
 const settingsState = loadState("workspaceSettings", settingsDefaults);
+const customAppsState = loadState("workspaceCustomApps", { apps: [] });
 
 const docDefaults = {
   docs: [{ id: crypto.randomUUID(), title: "Welcome Document", content: "<h1>Welcome</h1><p>This is your professional Docs workspace.</p>", updatedAt: Date.now(), versions: [] }],
@@ -73,6 +74,43 @@ const docsState = loadState("workspaceDocs", docDefaults);
 if (!docsState.currentId && docsState.docs[0]) docsState.currentId = docsState.docs[0].id;
 
 const sessionFiles = [];
+
+function saveCustomApps() {
+  saveState("workspaceCustomApps", customAppsState);
+}
+
+function makeCustomAppId(name) {
+  return `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function buildCustomAppDefinition(customApp) {
+  return {
+    title: customApp.name,
+    content: `<section class="custom-app-host"><iframe sandbox="allow-scripts allow-forms" title="${customApp.name} app" srcdoc="${encodeURIComponent(customApp.html)}"></iframe></section>`,
+    onMount: (root) => {
+      const frame = root.querySelector("iframe");
+      frame.srcdoc = customApp.html;
+    },
+  };
+}
+
+function getCustomAppById(id) {
+  return customAppsState.apps.find((a) => a.id === id);
+}
+
+function renderCustomAppLaunchers() {
+  const startHost = document.getElementById("customAppsStart");
+  const desktopHost = document.getElementById("customDesktopApps");
+  if (!startHost || !desktopHost) return;
+
+  startHost.innerHTML = customAppsState.apps.length
+    ? customAppsState.apps.map((a) => `<button data-app="${a.id}">🧩 ${a.name}</button>`).join("")
+    : "<p class=\"launcher-empty\">No installed custom apps yet.</p>";
+
+  desktopHost.innerHTML = customAppsState.apps
+    .map((a) => `<button class="desktop-icon" data-app="${a.id}"><span class="icon">🧩</span><span>${a.name}</span></button>`)
+    .join("");
+}
 
 const docsToolbar = [
   { group: "File", tools: ["newDoc", "saveDoc", "deleteDoc", "exportHtml", "printDoc", "restoreVersion"] },
@@ -99,6 +137,11 @@ const appDefinitions = {
     title: "Google Docs Style Studio",
     content: `<section class="docs-pro"><div class="docs-home" id="docsHome"></div><div class="docs-editor hidden" id="docsEditor"><div class="docs-header"><button id="backToHome">← Home</button><input id="docTitle" class="doc-title" /><button id="saveDoc">Save</button><span id="docMeta" class="doc-meta"></span></div><div id="toolGroups" class="tool-groups"></div><div id="docSurface" class="doc-surface" contenteditable="true"></div></div></section>`,
     onMount: mountDocs,
+  },
+  apps: {
+    title: "Apps Studio",
+    content: `<section class="apps-studio"><h3>Build / Install App</h3><div class="apps-builder"><input id="customAppName" placeholder="App name" /><textarea id="customAppScript" placeholder="Type JavaScript code here. Example: document.body.innerHTML='Hello App';"></textarea><div class="apps-actions"><button id="installTypedApp">Install from Script</button><label class="upload-btn">Upload .js<input id="uploadScript" type="file" accept=".js,text/javascript" hidden /></label><label class="upload-btn">Import App JSON<input id="importApp" type="file" accept="application/json,.json" hidden /></label></div></div><h4>Installed Apps</h4><div id="installedApps" class="installed-apps"></div></section>`,
+    onMount: mountAppsStudio,
   },
   browser: {
     title: "Browser Pro",
@@ -509,6 +552,86 @@ function mountBrowser(root) {
   addTab(settingsState.browserHome);
 }
 
+
+function mountAppsStudio(root) {
+  const nameInput = root.querySelector("#customAppName");
+  const scriptInput = root.querySelector("#customAppScript");
+  const installBtn = root.querySelector("#installTypedApp");
+  const uploadScript = root.querySelector("#uploadScript");
+  const importApp = root.querySelector("#importApp");
+  const installed = root.querySelector("#installedApps");
+
+  const renderInstalled = () => {
+    installed.innerHTML = customAppsState.apps.length
+      ? customAppsState.apps.map((app) => `<article class="installed-app"><strong>${app.name}</strong><div><button data-open="${app.id}">Open</button><button data-download="${app.id}">Download</button><button data-delete="${app.id}">Delete</button></div></article>`).join("")
+      : "<p>No custom apps installed.</p>";
+
+    installed.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openApp(b.dataset.open)));
+    installed.querySelectorAll("[data-delete]").forEach((b) => b.addEventListener("click", () => {
+      customAppsState.apps = customAppsState.apps.filter((a) => a.id !== b.dataset.delete);
+      saveCustomApps();
+      renderInstalled();
+      renderCustomAppLaunchers();
+    }));
+    installed.querySelectorAll("[data-download]").forEach((b) => b.addEventListener("click", () => {
+      const app = getCustomAppById(b.dataset.download);
+      if (!app) return;
+      const blob = new Blob([JSON.stringify(app, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${app.name.replace(/\s+/g, "-").toLowerCase()}.workspace-app.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }));
+  };
+
+  const installFromScript = (name, script) => {
+    if (!name.trim() || !script.trim()) return;
+    const app = {
+      id: makeCustomAppId(name),
+      name: name.trim(),
+      html: `<!doctype html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:12px;background:#0f172a;color:#e2ecff;font-family:Segoe UI,Arial}button,input,textarea{font-family:inherit}</style></head><body><div id="app"></div><script>${script}<\/script></body></html>`,
+      createdAt: Date.now(),
+    };
+    customAppsState.apps.unshift(app);
+    saveCustomApps();
+    renderInstalled();
+    renderCustomAppLaunchers();
+    nameInput.value = "";
+    scriptInput.value = "";
+  };
+
+  installBtn.addEventListener("click", () => installFromScript(nameInput.value, scriptInput.value));
+
+  uploadScript.addEventListener("change", async () => {
+    const f = uploadScript.files?.[0];
+    if (!f) return;
+    const script = await f.text();
+    const name = f.name.replace(/\.js$/i, "") || "Uploaded Script App";
+    installFromScript(name, script);
+    uploadScript.value = "";
+  });
+
+  importApp.addEventListener("change", async () => {
+    const f = importApp.files?.[0];
+    if (!f) return;
+    try {
+      const parsed = JSON.parse(await f.text());
+      if (!parsed.name || !parsed.html) throw new Error("Invalid app package");
+      parsed.id = parsed.id || makeCustomAppId(parsed.name);
+      customAppsState.apps.unshift(parsed);
+      saveCustomApps();
+      renderInstalled();
+      renderCustomAppLaunchers();
+    } catch {
+      alert("Invalid app JSON package.");
+    }
+    importApp.value = "";
+  });
+
+  renderInstalled();
+}
+
 function focusWindow(win) {
   z += 1;
   win.style.zIndex = String(z);
@@ -550,7 +673,9 @@ function openApp(appId) {
     startMenu.classList.add("hidden");
     return;
   }
-  const app = appDefinitions[appId];
+  const baseApp = appDefinitions[appId];
+  const customApp = getCustomAppById(appId);
+  const app = baseApp || (customApp ? buildCustomAppDefinition(customApp) : null);
   if (!app) return;
 
   const win = windowTemplate.content.firstElementChild.cloneNode(true);
@@ -602,7 +727,18 @@ document.querySelectorAll("[data-app]").forEach((el) => {
 });
 document.addEventListener("click", (e) => { if (!startMenu.contains(e.target) && e.target !== startButton) startMenu.classList.add("hidden"); });
 
+
+document.addEventListener("click", (e) => {
+  const trigger = e.target.closest("[data-app]");
+  if (!trigger) return;
+  if (trigger.closest("#customAppsStart") || trigger.closest("#customDesktopApps")) {
+    openApp(trigger.dataset.app);
+    e.stopPropagation();
+  }
+});
+
 applyAllSettings();
+renderCustomAppLaunchers();
 updateClock();
 if (settingsState.startupTip && settingsState.notifications) setTimeout(() => alert("Welcome! Open Settings to customize 50 real options."), 300);
 if (settingsState.openExplorerOnBoot) openApp("explorer");
